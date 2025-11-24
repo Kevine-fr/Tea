@@ -1,0 +1,67 @@
+version: "3.8"
+
+services:
+  db:
+    image: mysql:5.7
+    container_name: mysql_tea
+    volumes:
+      - db_data:/var/lib/mysql
+      - .:/workspace
+    working_dir: /workspace
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: password  
+      MYSQL_DATABASE: tea  
+      MYSQL_PASSWORD: password    
+    networks:
+      - backend
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin_tea
+    restart: unless-stopped
+    depends_on:
+      - db
+    ports:
+      - "8090:80"
+    environment:
+      PMA_HOST: db
+      PMA_USER: root
+      PMA_PASSWORD: password
+    networks:
+      - backend
+    volumes:
+      - .:/workspace
+    working_dir: /workspace
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: tea_serveur
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: tea
+      DB_USERNAME: root
+      DB_PASSWORD: password
+    networks:
+      - backend
+    volumes:
+      - .:/workspace
+    working_dir: /workspace
+    command: sh -c "composer install && php artisan key:generate && php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=8000"
+
+volumes:
+  db_data:
+
+networks:
+  backend:

@@ -1,0 +1,13 @@
+{
+  "name": "Tea Dev",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspace",
+  "forwardPorts": [8000 , 8080],
+  "features": {
+    "ghcr.io/devcontainers-extra/features/composer:1": {},
+    "ghcr.io/devcontainers/features/node:1": {}
+  },
+  "postCreateCommand": "echo 'Configuration éffectuée avec succès ✅'"
+}
+    
