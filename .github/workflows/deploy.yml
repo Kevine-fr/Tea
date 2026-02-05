@@ -25,60 +25,46 @@ jobs:
           ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
       
       - name: Deploy to VPS
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
-          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
-          GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-          REPO: ${{ github.repository }}
-          BRANCH: ${{ github.ref_name }}
         run: |
-          ssh $VPS_USERNAME@$VPS_HOST bash -s << 'ENDSSH'
-            set -e
-            
-            echo "📦 Préparation du déploiement..."
-            cd ~/tea-app || exit 1
-            
-            # Variables passées en argument
-            GH_TOKEN="${1}"
-            REPO="${2}"
-            BRANCH="${3}"
-            MYSQL_PASS="${4}"
-            GRAFANA_PASS="${5}"
-            
-            # Clone ou pull le repo avec le token
-            if [ ! -d ".git" ]; then
-              echo "📥 Clonage du repository..."
-              git clone https://${GH_TOKEN}@github.com/${REPO}.git .
-            else
-              echo "🔄 Mise à jour du code..."
-              git remote set-url origin https://${GH_TOKEN}@github.com/${REPO}.git
-              git fetch origin
-              git reset --hard origin/${BRANCH}
-            fi
-            
-            # Créer le fichier .env
-            echo "⚙️ Configuration de l'environnement..."
-            cat > .env << EOF
-          MYSQL_ROOT_PASSWORD=${MYSQL_PASS}
-          GRAFANA_ADMIN_PASSWORD=${GRAFANA_PASS}
+          ssh ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} "bash -s" <<EOF
+          set -e
+          
+          echo "📦 Préparation du déploiement..."
+          cd ~/tea-app || exit 1
+          
+          # Clone ou pull le repo avec le token
+          if [ ! -d ".git" ]; then
+            echo "📥 Clonage du repository..."
+            git clone https://${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}.git .
+          else
+            echo "🔄 Mise à jour du code..."
+            git remote set-url origin https://${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}.git
+            git fetch origin
+            git reset --hard origin/${{ github.ref_name }}
+          fi
+          
+          # Créer le fichier .env
+          echo "⚙️ Configuration de l'environnement..."
+          cat > .env <<ENVEOF
+          MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
+          GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}
           APP_KEY=
-          EOF
-            
-            # Générer APP_KEY si nécessaire
-            if [ -z "$(grep 'APP_KEY=' .env | cut -d '=' -f2)" ]; then
-              APP_KEY=$(docker run --rm php:8.2-cli php -r "echo 'base64:' . base64_encode(random_bytes(32));")
-              sed -i "s|APP_KEY=|APP_KEY=${APP_KEY}|g" .env
-            fi
-            
-            # Créer les dossiers de monitoring
-            mkdir -p monitoring/prometheus
-            mkdir -p monitoring/grafana/provisioning/datasources
-            
-            # Créer prometheus.yml
-            if [ ! -f monitoring/prometheus/prometheus.yml ]; then
-              cat > monitoring/prometheus/prometheus.yml << 'PROMEOF'
+          ENVEOF
+          
+          # Générer APP_KEY si nécessaire
+          if ! grep -q 'APP_KEY=base64:' .env; then
+            echo "🔑 Génération de APP_KEY..."
+            APP_KEY=\$(docker run --rm php:8.2-cli php -r "echo 'base64:' . base64_encode(random_bytes(32));")
+            sed -i "s|APP_KEY=|APP_KEY=\${APP_KEY}|g" .env
+          fi
+          
+          # Créer les dossiers de monitoring
+          mkdir -p monitoring/prometheus
+          mkdir -p monitoring/grafana/provisioning/datasources
+          
+          # Créer prometheus.yml
+          if [ ! -f monitoring/prometheus/prometheus.yml ]; then
+            cat > monitoring/prometheus/prometheus.yml <<PROMEOF
           global:
             scrape_interval: 15s
             evaluation_interval: 15s
@@ -102,36 +88,38 @@ jobs:
               static_configs:
                 - targets: ['cadvisor:8080']
           PROMEOF
-            fi
-            
-            # Arrêter les anciens conteneurs
-            echo "🛑 Arrêt des anciens conteneurs..."
-            docker compose -f docker-compose.prod.yml down || true
-            
-            # Rebuilder et démarrer
-            echo "🚀 Démarrage des nouveaux conteneurs..."
-            docker compose -f docker-compose.prod.yml up -d --build
-            
-            # Attendre le démarrage
-            echo "⏳ Attente du démarrage..."
-            sleep 15
-            
-            # Migrations
-            echo "🔧 Migrations..."
-            docker exec tea_serveur php artisan migrate --force || echo "⚠️ Migrations échouées"
-            
-            # Optimisations
-            echo "⚡ Optimisation..."
-            docker exec tea_serveur php artisan config:cache || true
-            docker exec tea_serveur php artisan route:cache || true
-            docker exec tea_serveur php artisan view:cache || true
-            
-            # État
-            echo "📊 État des conteneurs :"
-            docker ps
-            
-            echo "✅ Déploiement terminé !"
-            echo "🌐 Application : http://${VPS_HOST}"
-            echo "📊 Grafana : http://${VPS_HOST}:3000"
-            echo "📈 Prometheus : http://${VPS_HOST}:9090"
-          ENDSSH "$GH_TOKEN" "$REPO" "$BRANCH" "$MYSQL_ROOT_PASSWORD" "$GRAFANA_ADMIN_PASSWORD"
+          fi
+          
+          # Arrêter les anciens conteneurs
+          echo "🛑 Arrêt des anciens conteneurs..."
+          docker compose -f docker-compose.prod.yml down || true
+          
+          # Rebuilder et démarrer
+          echo "🚀 Démarrage des nouveaux conteneurs..."
+          docker compose -f docker-compose.prod.yml up -d --build
+          
+          # Attendre le démarrage
+          echo "⏳ Attente du démarrage des services..."
+          sleep 20
+          
+          # Migrations
+          echo "🔧 Exécution des migrations..."
+          docker exec tea_serveur php artisan migrate --force || echo "⚠️ Migrations échouées"
+          
+          # Optimisations
+          echo "⚡ Optimisation de Laravel..."
+          docker exec tea_serveur php artisan config:cache || true
+          docker exec tea_serveur php artisan route:cache || true
+          docker exec tea_serveur php artisan view:cache || true
+          
+          # État des conteneurs
+          echo ""
+          echo "📊 État des conteneurs :"
+          docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+          
+          echo ""
+          echo "✅ Déploiement terminé avec succès !"
+          echo "🌐 Application : http://${{ secrets.VPS_HOST }}"
+          echo "📊 Grafana : http://${{ secrets.VPS_HOST }}:3000"
+          echo "📈 Prometheus : http://${{ secrets.VPS_HOST }}:9090"
+          EOF
