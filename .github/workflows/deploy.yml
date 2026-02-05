@@ -43,12 +43,20 @@ jobs:
             git reset --hard origin/${{ github.ref_name }}
           fi
           
-          # Créer le fichier .env
+          # Créer le fichier .env avec toutes les variables
           echo "⚙️ Configuration de l'environnement..."
           cat > .env <<ENVEOF
+          # Base de données
           MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
+          
+          # Grafana
           GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}
+          
+          # Laravel
           APP_KEY=
+          
+          # Domaine de l'application
+          APP_DOMAIN=${{ secrets.APP_DOMAIN }}
           ENVEOF
           
           # Générer APP_KEY si nécessaire
@@ -119,7 +127,7 @@ jobs:
           
           echo ""
           echo "✅ Déploiement terminé avec succès !"
-          echo "🌐 Application : http://${{ secrets.VPS_HOST }}"
-          echo "📊 Grafana : http://${{ secrets.VPS_HOST }}:3000"
-          echo "📈 Prometheus : http://${{ secrets.VPS_HOST }}:9090"
+          echo "🌐 Application : http://${{ secrets.APP_DOMAIN }}"
+          echo "📊 Grafana : http://${{ secrets.APP_DOMAIN }}/grafana"
+          echo "📈 Prometheus : http://${{ secrets.APP_DOMAIN }}/prometheus"
           EOF
