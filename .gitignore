@@ -22,3 +22,11 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Logs Nginx
+storage/logs/nginx/*
+!storage/logs/nginx/.gitkeep
+
+# Certificats SSL
+certbot_data/
+certbot_www/
