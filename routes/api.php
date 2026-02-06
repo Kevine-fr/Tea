@@ -7,6 +7,6 @@ Route::get('/', function () {
     return "Server in life...✅";
 });
 
-Route::get('/random', [DemoController::class, 'random']);
-Route::get('/always', [DemoController::class, 'always']);
+Route::get('/random-status', [DemoController::class, 'randomStatus']);
+Route::get('/always-ok', [DemoController::class, 'alwaysOk']);
 
