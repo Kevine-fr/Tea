@@ -109,14 +109,29 @@ services:
     expose:
       - "3000"
     environment:
+      # Authentification
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
       GF_USERS_ALLOW_SIGN_UP: false
+      
+      # Configuration serveur
       GF_SERVER_ROOT_URL: http://${APP_DOMAIN}/grafana/
       GF_SERVER_SERVE_FROM_SUB_PATH: true
+      
+      # SMTP pour alertes
+      GF_SMTP_ENABLED: true
+      GF_SMTP_HOST: smtp.gmail.com:587
+      GF_SMTP_USER: ${GRAFANA_SMTP_USER}
+      GF_SMTP_PASSWORD: ${GRAFANA_SMTP_PASSWORD}
+      GF_SMTP_FROM_ADDRESS: ${GRAFANA_SMTP_USER}
+      GF_SMTP_FROM_NAME: Grafana Tea Monitoring
+      GF_SMTP_SKIP_VERIFY: false
+      
+      # Provisioning automatique
+      GF_PATHS_PROVISIONING: /etc/grafana/provisioning
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
     depends_on:
       - prometheus
     networks:
