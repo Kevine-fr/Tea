@@ -51,6 +51,8 @@ jobs:
           
           # Grafana
           GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}
+          GRAFANA_SMTP_USER=${{ secrets.GRAFANA_SMTP_USER }}
+          GRAFANA_SMTP_PASSWORD=${{ secrets.GRAFANA_SMTP_PASSWORD }}
           
           # Laravel
           APP_KEY=
