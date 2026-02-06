@@ -238,7 +238,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "round(sum(increase(http_requests_total{status=\"200\"}[5m])))",
+          "expr": "round(sum(http_requests_total{status=\"200\"}))",
           "instant": false,
           "range": true,
           "refId": "A"
@@ -302,7 +302,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "round(sum(increase(http_requests_total{status=\"201\"}[5m])))",
+          "expr": "round(sum(http_requests_total{status=\"201\"}))",
           "instant": false,
           "range": true,
           "refId": "A"
@@ -366,7 +366,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "round(sum(increase(http_requests_total{status=\"204\"}[5m])))",
+          "expr": "round(sum(http_requests_total{status=\"204\"}))",
           "instant": false,
           "range": true,
           "refId": "A"
@@ -430,7 +430,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "round(sum(increase(http_requests_total{status=\"301\"}[5m])))",
+          "expr": "round(sum(http_requests_total{status=\"301\"}))",
           "instant": false,
           "range": true,
           "refId": "A"
@@ -494,7 +494,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "round(sum(increase(http_requests_total{status=\"302\"}[5m])))",
+          "expr": "round(sum(http_requests_total{status=\"302\"}))",
           "instant": false,
           "range": true,
           "refId": "A"
@@ -558,7 +558,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "round(sum(increase(http_requests_total{status=\"304\"}[5m])))",
+          "expr": "round(sum(http_requests_total{status=\"304\"}))",
           "instant": false,
           "range": true,
           "refId": "A"
@@ -622,7 +622,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "round(sum(increase(http_requests_total{status=\"400\"}[5m])))",
+          "expr": "round(sum(http_requests_total{status=\"400\"}))",
           "instant": false,
           "range": true,
           "refId": "A"
@@ -686,7 +686,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "round(sum(increase(http_requests_total{status=\"401\"}[5m])))",
+          "expr": "round(sum(http_requests_total{status=\"401\"}))",
           "instant": false,
           "range": true,
           "refId": "A"
@@ -750,7 +750,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "round(sum(increase(http_requests_total{status=\"403\"}[5m])))",
+          "expr": "round(sum(http_requests_total{status=\"403\"}))",
           "instant": false,
           "range": true,
           "refId": "A"
@@ -818,7 +818,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "round(sum(increase(http_requests_total{status=\"404\"}[5m])))",
+          "expr": "round(sum(http_requests_total{status=\"404\"}))",
           "instant": false,
           "range": true,
           "refId": "A"
@@ -882,7 +882,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "round(sum(increase(http_requests_total{status=\"409\"}[5m])))",
+          "expr": "round(sum(http_requests_total{status=\"409\"}))",
           "instant": false,
           "range": true,
           "refId": "A"
@@ -946,7 +946,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "round(sum(increase(http_requests_total{status=\"422\"}[5m])))",
+          "expr": "round(sum(http_requests_total{status=\"422\"}))",
           "instant": false,
           "range": true,
           "refId": "A"
@@ -1010,7 +1010,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "round(sum(increase(http_requests_total{status=\"429\"}[5m])))",
+          "expr": "round(sum(http_requests_total{status=\"429\"}))",
           "instant": false,
           "range": true,
           "refId": "A"
@@ -1078,7 +1078,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "round(sum(increase(http_requests_total{status=\"500\"}[5m])))",
+          "expr": "round(sum(http_requests_total{status=\"500\"}))",
           "instant": false,
           "range": true,
           "refId": "A"
@@ -1142,7 +1142,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "round(sum(increase(http_requests_total{status=\"501\"}[5m])))",
+          "expr": "round(sum(http_requests_total{status=\"501\"}))",
           "instant": false,
           "range": true,
           "refId": "A"
@@ -1206,7 +1206,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "round(sum(increase(http_requests_total{status=\"502\"}[5m])))",
+          "expr": "round(sum(http_requests_total{status=\"502\"}))",
           "instant": false,
           "range": true,
           "refId": "A"
@@ -1270,7 +1270,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "round(sum(increase(http_requests_total{status=\"503\"}[5m])))",
+          "expr": "round(sum(http_requests_total{status=\"503\"}))",
           "instant": false,
           "range": true,
           "refId": "A"
@@ -1334,7 +1334,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "round(sum(increase(http_requests_total{status=\"504\"}[5m])))",
+          "expr": "round(sum(http_requests_total{status=\"504\"}))",
           "instant": false,
           "range": true,
           "refId": "A"
@@ -1422,7 +1422,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "topk(20, sum by (path, method, status) (increase(http_requests_total[5m])))",
+          "expr": "topk(20, sum by (path, method, status) (http_requests_total))",
           "format": "table",
           "instant": true,
           "refId": "A"
