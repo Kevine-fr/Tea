@@ -7,20 +7,28 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Run the migrations.
+     * Ce fichier s'exécute EN PREMIER (timestamp 0001).
+     *
+     * ⚠️  On crée `users` ICI (sans FK vers `roles`) car
+     *     `user_auths` en a besoin dès la migration suivante.
+     *
+     * La FK users.role_id → roles.id est ajoutée DANS la
+     * migration create_roles_table, une fois `roles` créée.
      */
     public function up(): void
     {
+        // ─── users (sans contrainte FK vers roles) ──────────────────────────
         Schema::create('users', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
+            $table->uuid('id')->primary();
             $table->string('email')->unique();
-            $table->timestamp('email_verified_at')->nullable();
-            $table->string('password');
-            $table->rememberToken();
+            $table->string('password_hash')->nullable();
+            $table->date('birth_date')->nullable();
+            $table->smallInteger('role_id')->default(3);
             $table->timestamps();
+            // ⚠️  Pas de FK ici — roles n'existe pas encore à ce stade
         });
 
+        // ─── Tables système Laravel ─────────────────────────────────────────
         Schema::create('password_reset_tokens', function (Blueprint $table) {
             $table->string('email')->primary();
             $table->string('token');
@@ -37,9 +45,6 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('users');

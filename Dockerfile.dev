@@ -25,4 +25,3 @@ WORKDIR /workspace
 COPY . .
 
 EXPOSE 8000
-
