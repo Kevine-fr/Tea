@@ -3,132 +3,109 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
-use App\Models\AuthProvider;
 use App\Models\User;
-use App\Models\UserAuth;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password;
 
 class AuthWebController extends Controller
 {
-    /**
-     * GET /jeu-concours — Affiche login + register
-     */
+    // ─── Affichage login ──────────────────────────────────────────────────────
     public function showLogin()
     {
-        if (Auth::check()) {
-            return redirect()->route('dashboard');
-        }
         return view('auth.login');
     }
 
-    /**
-     * POST /login
-     */
-    public function login(Request $request): RedirectResponse
+    // ─── Affichage register ───────────────────────────────────────────────────
+    public function showRegister()
     {
-        $request->validate([
+        return view('auth.register');
+    }
+
+    // ─── Traitement login ─────────────────────────────────────────────────────
+    public function login(Request $request)
+    {
+        $credentials = $request->validate([
             'email'    => ['required', 'email'],
             'password' => ['required'],
         ]);
 
-        // Chercher l'utilisateur manuellement (notre champ est password_hash)
-        $user = User::where('email', $request->email)->first();
+        if (Auth::attempt($credentials, $request->boolean('remember'))) {
+            $request->session()->regenerate();
 
-        if (!$user || !Hash::check($request->password, $user->password_hash)) {
-            return back()
-                ->withErrors(['login' => 'Email ou mot de passe incorrect.'])
-                ->withInput($request->only('email'));
+            $user = Auth::user();
+
+            if ($user->isAdmin() || $user->isEmployee()) {
+                return redirect()->route('admin.dashboard');
+            }
+
+            return redirect()->intended(route('dashboard'));
         }
 
-        Auth::login($user, $request->boolean('remember'));
-        $request->session()->regenerate();
-
-        // Rediriger selon le rôle
-        if ($user->isAdmin() || $user->isEmployee()) {
-            return redirect()->route('admin.dashboard')
-                             ->with('success', 'Bienvenue dans l\'espace admin !');
-        }
-
-        return redirect()->route('dashboard')
-                         ->with('success', 'Bienvenue sur votre espace Thé Tip Top !');
+        return back()
+            ->withInput($request->only('email'))
+            ->withErrors(['email' => 'Identifiants incorrects. Veuillez réessayer.']);
     }
 
-    /**
-     * POST /register
-     */
-    public function register(Request $request): RedirectResponse
+    // ─── Traitement register ──────────────────────────────────────────────────
+    public function register(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'last_name'             => ['required', 'string', 'max:100'],
             'first_name'            => ['required', 'string', 'max:100'],
             'email'                 => ['required', 'email', 'unique:users,email'],
-            'password'              => ['required', 'min:8', 'confirmed'],
-            'birth_date'            => ['nullable', 'date', 'before:-18 years'],
+            'password'              => ['required', 'confirmed', Password::min(8)],
             'terms'                 => ['required', 'accepted'],
+            'birth_date'            => ['nullable', 'date', 'before:-18 years'],
         ], [
-            'email.unique'       => 'Cette adresse email est déjà utilisée.',
-            'password.min'       => 'Le mot de passe doit contenir au moins 8 caractères.',
-            'password.confirmed' => 'Les mots de passe ne correspondent pas.',
-            'birth_date.before'  => 'Vous devez avoir au moins 18 ans pour participer.',
-            'terms.required'     => 'Vous devez accepter le règlement du jeu.',
-            'terms.accepted'     => 'Vous devez accepter le règlement du jeu.',
+            'last_name.required'    => 'Le nom est obligatoire.',
+            'first_name.required'   => 'Le prénom est obligatoire.',
+            'email.required'        => 'L\'adresse e-mail est obligatoire.',
+            'email.unique'          => 'Cette adresse e-mail est déjà utilisée.',
+            'password.confirmed'    => 'Les mots de passe ne correspondent pas.',
+            'password.min'          => 'Le mot de passe doit contenir au moins 8 caractères.',
+            'terms.accepted'        => 'Vous devez accepter les conditions d\'utilisation.',
+            'birth_date.before'     => 'Vous devez avoir au moins 18 ans pour participer.',
         ]);
 
         $user = User::create([
-            'id'            => Str::uuid(),
-            'email'         => $request->email,
-            'password_hash' => Hash::make($request->password),
-            'birth_date'    => $request->birth_date,
-            'role_id'       => 3, // user
-        ]);
-
-        // Créer l'auth locale
-        UserAuth::create([
-            'id'               => Str::uuid(),
-            'user_id'          => $user->id,
-            'provider_id'      => AuthProvider::LOCAL,
-            'provider_user_id' => $user->id,
+            'last_name'     => $validated['last_name'],
+            'first_name'    => $validated['first_name'],
+            'email'         => $validated['email'],
+            'password_hash' => Hash::make($validated['password']),
+            'role'          => 'user',
+            'birth_date'    => $validated['birth_date'] ?? null,
         ]);
 
         Auth::login($user);
         $request->session()->regenerate();
 
         return redirect()->route('dashboard')
-                         ->with('success', '🎉 Compte créé ! Bienvenue dans le jeu Thé Tip Top.');
+            ->with('success', 'Bienvenue ' . $user->first_name . ' ! Votre compte a été créé avec succès.');
     }
 
-    /**
-     * POST /logout
-     */
-    public function logout(Request $request): RedirectResponse
+    // ─── Déconnexion ──────────────────────────────────────────────────────────
+    public function logout(Request $request)
     {
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('home')
-                         ->with('success', 'Vous avez été déconnecté.');
+        return redirect()->route('home');
     }
 
-    /**
-     * OAuth Google — redirect
-     */
+    // ─── OAuth Google (stub) ──────────────────────────────────────────────────
     public function redirectToGoogle()
     {
         return redirect()->route('login')
-                         ->with('error', 'Connexion Google non configurée.');
+            ->with('info', 'Connexion Google temporairement indisponible.');
     }
 
-    /**
-     * OAuth Facebook — redirect
-     */
+    // ─── OAuth Facebook (stub) ────────────────────────────────────────────────
     public function redirectToFacebook()
     {
         return redirect()->route('login')
-                         ->with('error', 'Connexion Facebook non configurée.');
+            ->with('info', 'Connexion Facebook temporairement indisponible.');
     }
 }
