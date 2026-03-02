@@ -9,127 +9,98 @@ jobs:
   deploy:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
-      
+
       - name: Add VPS to known hosts
         run: |
           mkdir -p ~/.ssh
           ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
-      
+
       - name: Deploy to VPS
         run: |
           ssh ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} "bash -s" <<EOF
           set -e
-          
+
           echo "📦 Préparation du déploiement..."
-          cd ~/tea-app || exit 1
-          
-          # Clone ou pull le repo avec le token
+          mkdir -p ~/tea-app
+          cd ~/tea-app
+
+          # Clone ou update repo
           if [ ! -d ".git" ]; then
-            echo "📥 Clonage du repository..."
+            echo "📥 Clonage..."
             git clone https://${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}.git .
           else
-            echo "🔄 Mise à jour du code..."
+            echo "🔄 Mise à jour..."
             git remote set-url origin https://${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}.git
             git fetch origin
             git reset --hard origin/${{ github.ref_name }}
           fi
-          
-          # Créer le fichier .env avec toutes les variables
-          echo "⚙️ Configuration de l'environnement..."
+
+          echo "⚙️ Création du .env..."
           cat > .env <<ENVEOF
-          # Base de données
+          APP_ENV=production
+          APP_DEBUG=false
+          APP_DOMAIN=${{ secrets.APP_DOMAIN }}
+
           MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
-          
-          # Grafana
+
           GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}
           GRAFANA_SMTP_USER=${{ secrets.GRAFANA_SMTP_USER }}
           GRAFANA_SMTP_PASSWORD=${{ secrets.GRAFANA_SMTP_PASSWORD }}
-          
-          # Laravel
+
           APP_KEY=
-          
-          # Domaine de l'application
-          APP_DOMAIN=${{ secrets.APP_DOMAIN }}
           ENVEOF
-          
-          # Générer APP_KEY si nécessaire
+
+          # Générer APP_KEY si absent
           if ! grep -q 'APP_KEY=base64:' .env; then
-            echo "🔑 Génération de APP_KEY..."
+            echo "🔑 Génération APP_KEY..."
             APP_KEY=\$(docker run --rm php:8.2-cli php -r "echo 'base64:' . base64_encode(random_bytes(32));")
             sed -i "s|APP_KEY=|APP_KEY=\${APP_KEY}|g" .env
           fi
-          
-          # Créer les dossiers de monitoring
-          mkdir -p monitoring/prometheus
-          mkdir -p monitoring/grafana/provisioning/datasources
-          
-          # Créer prometheus.yml
-          if [ ! -f monitoring/prometheus/prometheus.yml ]; then
-            cat > monitoring/prometheus/prometheus.yml <<PROMEOF
-          global:
-            scrape_interval: 15s
-            evaluation_interval: 15s
-          
-          scrape_configs:
-            - job_name: 'prometheus'
-              static_configs:
-                - targets: ['localhost:9090']
-          
-            - job_name: 'laravel-app'
-              static_configs:
-                - targets: ['app:8000']
-              metrics_path: '/metrics'
-              scrape_interval: 5s
-          
-            - job_name: 'node-exporter'
-              static_configs:
-                - targets: ['node-exporter:9100']
-          
-            - job_name: 'cadvisor'
-              static_configs:
-                - targets: ['cadvisor:8080']
-          PROMEOF
+
+          echo "🛑 Arrêt anciens conteneurs..."
+          docker compose -f docker-compose.prod.yml down --remove-orphans || true
+
+          echo "🏗 Build propre..."
+          docker compose -f docker-compose.prod.yml build --no-cache
+
+          echo "🚀 Démarrage..."
+          docker compose -f docker-compose.prod.yml up -d
+
+          echo "⏳ Attente du conteneur Laravel..."
+          sleep 15
+
+          # Vérifie que le conteneur existe
+          if docker ps --format '{{.Names}}' | grep -q "tea_serveur"; then
+            echo "🔧 Migrations..."
+            docker exec tea_serveur php artisan migrate --force
+
+            echo "⚡ Optimisation..."
+            docker exec tea_serveur php artisan config:cache || true
+            docker exec tea_serveur php artisan route:cache || true
+            docker exec tea_serveur php artisan view:cache || true
+          else
+            echo "❌ Conteneur tea_serveur non trouvé"
+            docker ps
+            exit 1
           fi
-          
-          # Arrêter les anciens conteneurs
-          echo "🛑 Arrêt des anciens conteneurs..."
-          docker compose -f docker-compose.prod.yml down || true
-          
-          # Rebuilder et démarrer
-          echo "🚀 Démarrage des nouveaux conteneurs..."
-          docker compose -f docker-compose.prod.yml up -d --build
-          
-          # Attendre le démarrage
-          echo "⏳ Attente du démarrage des services..."
-          sleep 20
-          
-          # Migrations
-          echo "🔧 Exécution des migrations..."
-          docker exec tea_serveur php artisan migrate --force || echo "⚠️ Migrations échouées"
-          
-          # Optimisations
-          echo "⚡ Optimisation de Laravel..."
-          docker exec tea_serveur php artisan config:cache || true
-          docker exec tea_serveur php artisan route:cache || true
-          docker exec tea_serveur php artisan view:cache || true
-          
-          # État des conteneurs
+
           echo ""
           echo "📊 État des conteneurs :"
           docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-          
+
           echo ""
-          echo "✅ Déploiement terminé avec succès !"
+          echo "✅ Déploiement terminé"
           echo "🌐 Application : http://${{ secrets.APP_DOMAIN }}"
           echo "📊 Grafana : http://${{ secrets.APP_DOMAIN }}/grafana"
           echo "📈 Prometheus : http://${{ secrets.APP_DOMAIN }}/prometheus"
+
           EOF
