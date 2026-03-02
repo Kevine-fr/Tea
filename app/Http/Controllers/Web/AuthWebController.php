@@ -3,25 +3,19 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\LoginRequest;
-use App\Http\Requests\RegisterRequest;
 use App\Models\AuthProvider;
 use App\Models\User;
 use App\Models\UserAuth;
-use App\Services\AuthService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
-use Laravel\Socialite\Facades\Socialite;
 
 class AuthWebController extends Controller
 {
-    public function __construct(protected AuthService $authService) {}
-
     /**
-     * GET /jeu-concours
+     * GET /jeu-concours — Affiche login + register
      */
     public function showLogin()
     {
@@ -34,24 +28,33 @@ class AuthWebController extends Controller
     /**
      * POST /login
      */
-    public function login(LoginRequest $request): RedirectResponse
+    public function login(Request $request): RedirectResponse
     {
-        $credentials = [
-            'email'    => $request->email,
-            'password' => $request->password,
-        ];
+        $request->validate([
+            'email'    => ['required', 'email'],
+            'password' => ['required'],
+        ]);
 
-        // Laravel Auth utilise "password" mais notre champ est "password_hash"
-        // On utilise notre service custom
-        try {
-            $result = $this->authService->login($request->email, $request->password);
-            Auth::login($result['user'], $request->boolean('remember'));
+        // Chercher l'utilisateur manuellement (notre champ est password_hash)
+        $user = User::where('email', $request->email)->first();
 
-            return redirect()->intended(route('dashboard'))
-                             ->with('success', 'Bienvenue sur votre espace Thé Tip Top !');
-        } catch (\App\Exceptions\AppException $e) {
-            return back()->withErrors(['login' => $e->getMessage()])->withInput();
+        if (!$user || !Hash::check($request->password, $user->password_hash)) {
+            return back()
+                ->withErrors(['login' => 'Email ou mot de passe incorrect.'])
+                ->withInput($request->only('email'));
         }
+
+        Auth::login($user, $request->boolean('remember'));
+        $request->session()->regenerate();
+
+        // Rediriger selon le rôle
+        if ($user->isAdmin() || $user->isEmployee()) {
+            return redirect()->route('admin.dashboard')
+                             ->with('success', 'Bienvenue dans l\'espace admin !');
+        }
+
+        return redirect()->route('dashboard')
+                         ->with('success', 'Bienvenue sur votre espace Thé Tip Top !');
     }
 
     /**
@@ -59,34 +62,43 @@ class AuthWebController extends Controller
      */
     public function register(Request $request): RedirectResponse
     {
-        $validated = $request->validate([
+        $request->validate([
             'last_name'             => ['required', 'string', 'max:100'],
             'first_name'            => ['required', 'string', 'max:100'],
-            'email'                 => ['required', 'email', 'unique:users,email', 'max:255'],
+            'email'                 => ['required', 'email', 'unique:users,email'],
             'password'              => ['required', 'min:8', 'confirmed'],
             'birth_date'            => ['nullable', 'date', 'before:-18 years'],
             'terms'                 => ['required', 'accepted'],
         ], [
             'email.unique'       => 'Cette adresse email est déjà utilisée.',
+            'password.min'       => 'Le mot de passe doit contenir au moins 8 caractères.',
             'password.confirmed' => 'Les mots de passe ne correspondent pas.',
             'birth_date.before'  => 'Vous devez avoir au moins 18 ans pour participer.',
             'terms.required'     => 'Vous devez accepter le règlement du jeu.',
+            'terms.accepted'     => 'Vous devez accepter le règlement du jeu.',
         ]);
 
-        try {
-            $result = $this->authService->register([
-                'email'      => $validated['email'],
-                'password'   => $validated['password'],
-                'birth_date' => $validated['birth_date'] ?? null,
-            ]);
+        $user = User::create([
+            'id'            => Str::uuid(),
+            'email'         => $request->email,
+            'password_hash' => Hash::make($request->password),
+            'birth_date'    => $request->birth_date,
+            'role_id'       => 3, // user
+        ]);
 
-            Auth::login($result['user']);
+        // Créer l'auth locale
+        UserAuth::create([
+            'id'               => Str::uuid(),
+            'user_id'          => $user->id,
+            'provider_id'      => AuthProvider::LOCAL,
+            'provider_user_id' => $user->id,
+        ]);
 
-            return redirect()->route('dashboard')
-                             ->with('success', '🎉 Compte créé avec succès ! Bienvenue dans le jeu Thé Tip Top !');
-        } catch (\Exception $e) {
-            return back()->withErrors(['register' => $e->getMessage()])->withInput();
-        }
+        Auth::login($user);
+        $request->session()->regenerate();
+
+        return redirect()->route('dashboard')
+                         ->with('success', '🎉 Compte créé ! Bienvenue dans le jeu Thé Tip Top.');
     }
 
     /**
@@ -103,56 +115,20 @@ class AuthWebController extends Controller
     }
 
     /**
-     * GET /auth/google/redirect
+     * OAuth Google — redirect
      */
     public function redirectToGoogle()
     {
-        return Socialite::driver('google')->redirect();
+        return redirect()->route('login')
+                         ->with('error', 'Connexion Google non configurée.');
     }
 
     /**
-     * GET /auth/google/callback
-     */
-    public function handleGoogleCallback(): RedirectResponse
-    {
-        try {
-            $googleUser = Socialite::driver('google')->user();
-            $result     = $this->authService->loginOrCreateOAuth(
-                AuthProvider::GOOGLE,
-                $googleUser->getId(),
-                $googleUser->getEmail()
-            );
-            Auth::login($result['user']);
-            return redirect()->route('dashboard')->with('success', 'Connexion Google réussie !');
-        } catch (\Exception $e) {
-            return redirect()->route('login')->with('error', 'Erreur de connexion avec Google.');
-        }
-    }
-
-    /**
-     * GET /auth/facebook/redirect
+     * OAuth Facebook — redirect
      */
     public function redirectToFacebook()
     {
-        return Socialite::driver('facebook')->redirect();
-    }
-
-    /**
-     * GET /auth/facebook/callback
-     */
-    public function handleFacebookCallback(): RedirectResponse
-    {
-        try {
-            $fbUser = Socialite::driver('facebook')->user();
-            $result = $this->authService->loginOrCreateOAuth(
-                AuthProvider::FACEBOOK,
-                $fbUser->getId(),
-                $fbUser->getEmail()
-            );
-            Auth::login($result['user']);
-            return redirect()->route('dashboard')->with('success', 'Connexion Facebook réussie !');
-        } catch (\Exception $e) {
-            return redirect()->route('login')->with('error', 'Erreur de connexion avec Facebook.');
-        }
+        return redirect()->route('login')
+                         ->with('error', 'Connexion Facebook non configurée.');
     }
 }

@@ -25,3 +25,5 @@ WORKDIR /workspace
 COPY . .
 
 EXPOSE 8000
+
+# wk-archi-o22a-15M-G1
