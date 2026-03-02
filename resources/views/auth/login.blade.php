@@ -1,326 +1,126 @@
 @extends('layouts.app')
+@section('title','Connexion — Thé Tip Top')
 
-@section('title', 'Thé Tip Top — Thés biologiques & Jeu-Concours')
+@section('page_styles')
+.auth-wrap{position:relative;z-index:1;padding:2.5rem 3rem 5rem;max-width:1050px;margin:0 auto}
+.auth-subtitle{text-align:center;margin-bottom:2.5rem}
+.auth-grid{display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start}
+.auth-img{border-radius:18px;overflow:hidden;height:380px;background:linear-gradient(135deg,#2d5a27,#1e3d1a);display:flex;align-items:center;justify-content:center}
+.auth-card{background:var(--white);border-radius:18px;box-shadow:var(--sh);padding:2.5rem}
+.auth-card-title{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;text-align:center;margin-bottom:1.6rem}
+.input-has-eye{position:relative}
+.input-has-eye input{padding-right:2.8rem}
+.eye-btn{position:absolute;right:.8rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--txt-l);padding:4px;transition:color .2s;line-height:1}
+.eye-btn:hover{color:var(--txt)}
+.divider{display:flex;align-items:center;gap:1rem;margin:1.2rem 0;color:var(--txt-l);font-size:.83rem}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--cream-d)}
+.oauth-btn{display:flex;align-items:center;gap:.8rem;width:100%;padding:.7rem 1.2rem;border-radius:10px;border:1.5px solid var(--cream-d);background:var(--white);font-family:'Jost',sans-serif;font-size:.86rem;font-weight:500;cursor:pointer;transition:var(--t);margin-bottom:.8rem;text-decoration:none;color:var(--txt)}
+.oauth-btn:hover{border-color:var(--green-m);background:var(--cream);transform:translateY(-1px)}
+@endsection
 
 @section('content')
 
-{{-- ══════════════════════════════════════════
-     HERO SECTION
-══════════════════════════════════════════ --}}
-<section class="hero" style="background-image: url('{{ asset('images/hero-tea-field.jpg') }}'); height: 420px;"
-         onerror="this.style.backgroundImage='linear-gradient(135deg, #1e3d2f 0%, #2a5240 100%)'">
-    <div class="hero-content">
-        <h1 style="font-size: clamp(2.5rem, 5vw, 3.8rem); font-style: italic;">Thé Tip Top</h1>
-        <a href="{{ route('login') }}" class="btn btn-orange" style="font-size: 1rem; padding: 0.8rem 2.2rem;">
-            Participer au jeu-concours
-        </a>
-    </div>
+{{-- Banner --}}
+<section class="page-banner fade-up">
+    @include('partials.ornament')
+    <div style="text-align:center;flex:1"><span class="banner-tape">Connexion</span></div>
+    @include('partials.ornament', ['flip' => true])
 </section>
 
-{{-- ══════════════════════════════════════════
-     VALEURS — Thé Bio / Artisanal / Premium
-══════════════════════════════════════════ --}}
-<section class="section section-beige">
-    <div class="container">
-        <div class="grid-3" style="margin-top: 3.5rem;">
-
-            @php
-            $values = [
-                [
-                    'icon'  => 'icon-bio.svg',
-                    'emoji' => '🌿',
-                    'title' => 'Thé Bio',
-                    'desc'  => 'Des thés issus de l\'agriculture biologique, cultivés dans le respect de la nature et des producteurs. Sans pesticides ni additifs, nos créations préservent les saveurs authentiques et les bienfaits naturels du thé, pour une dégustation saine et responsable.',
-                ],
-                [
-                    'icon'  => 'icon-artisanal.svg',
-                    'emoji' => '✋',
-                    'title' => 'Thé Artisanal',
-                    'desc'  => 'Chaque thé est imaginé et assemblé à la main selon un savoir-faire artisanal exigeant. Nos mélanges signatures sont le fruit d\'une sélection minutieuse des feuilles et d\'un travail précis, garantissant une qualité constante et une identité unique.',
-                ],
-                [
-                    'icon'  => 'icon-premium.svg',
-                    'emoji' => '⭐',
-                    'title' => 'Thé Premium',
-                    'desc'  => 'Une expérience haut de gamme pensée pour les amateurs de thés d\'exception. Feuilles rares, recettes exclusives et coffrets raffinés font de chaque dégustation un moment unique, entre plaisir, élégance et découverte.',
-                ],
-            ];
-            @endphp
-
-            @foreach($values as $val)
-            <div style="padding-top: 3.5rem;">
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <span style="font-size: 2rem;">{{ $val['emoji'] }}</span>
-                    </div>
-                    <h3>{{ $val['title'] }}</h3>
-                    <p>{{ $val['desc'] }}</p>
-                </div>
-            </div>
-            @endforeach
-
-        </div>
+<div class="auth-wrap">
+    <div class="auth-subtitle fade-up">
+        <h2 style="font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;margin-bottom:.5rem">Pause Thé !</h2>
+        <p style="color:var(--txt-m);font-size:.9rem">Connecte-toi pour consulter tes lots et suivre tes gains.</p>
     </div>
-</section>
 
-{{-- ══════════════════════════════════════════
-     NOS THÉS — Carousel
-══════════════════════════════════════════ --}}
-<section class="section" id="nos-thes">
-    <div class="container">
-        <h2 class="section-title">Nos Thés</h2>
-        <p class="section-subtitle">Des thés aux saveurs authentiques, pensés pour chaque moment de dégustation.</p>
+    <div class="auth-grid fade-up s1">
+        {{-- Form --}}
+        <div class="auth-card">
+            <div class="auth-card-title">Formulaire de connexion</div>
 
-        <div style="position:relative; display:flex; align-items:center; gap: 1rem;">
-            <button class="carousel-arrow" onclick="slideCarousel('teas', -1)">«</button>
+            @if(session('error'))
+            <div class="alert alert-error">{{ session('error') }}</div>
+            @endif
+            @if($errors->any())
+            <div class="alert alert-error">
+                @foreach($errors->all() as $e)<div>{{ $e }}</div>@endforeach
+            </div>
+            @endif
 
-            <div id="teas-carousel" style="display:grid; grid-template-columns: repeat(3,1fr); gap: 1.5rem; flex:1; overflow:hidden;">
-                @php
-                $teas = [
-                    [
-                        'name'  => 'Thé vert',
-                        'img'   => 'tea-green.jpg',
-                        'emoji' => '🍃',
-                        'desc'  => 'Frais et délicat, le thé vert séduit par ses notes végétales et légèrement herbacées. Riche en antioxydants, il accompagne parfaitement les moments de détente et de bien-être au quotidien.',
-                        'color' => '#d4f4d8',
-                    ],
-                    [
-                        'name'  => 'Thé noir',
-                        'img'   => 'tea-black.jpg',
-                        'emoji' => '🖤',
-                        'desc'  => 'Intense et chaleureux, le thé noir offre des arômes profonds et structurés. Idéal pour une pause énergisante, il se déguste nature ou accompagné de notes épicées ou gourmandes.',
-                        'color' => '#f4e8d4',
-                    ],
-                    [
-                        'name'  => 'Thé blanc',
-                        'img'   => 'tea-white.jpg',
-                        'emoji' => '☁️',
-                        'desc'  => 'Subtil et raffiné, le thé blanc est reconnu pour sa douceur et sa finesse. Peu transformé, il révèle des saveurs délicates et florales, pour une expérience de dégustation tout en élégance.',
-                        'color' => '#f0eaff',
-                    ],
-                    [
-                        'name'  => 'Thé oolong',
-                        'img'   => 'tea-oolong.jpg',
-                        'emoji' => '🌸',
-                        'desc'  => 'Mi-chemin entre le vert et le noir, l\'oolong offre une complexité aromatique unique. Floral, fruité ou boisé selon le terroir, il révèle toute sa richesse au fil des infusions.',
-                        'color' => '#fce8f4',
-                    ],
-                    [
-                        'name'  => 'Thé rouge',
-                        'img'   => 'tea-red.jpg',
-                        'emoji' => '❤️',
-                        'desc'  => 'Naturellement sans théine, le thé rouge (rooibos) est parfait pour toute la famille. Doux, légèrement sucré, il réchauffe les soirées et accompagne aussi bien le matin que le soir.',
-                        'color' => '#fce8e8',
-                    ],
-                ];
-                @endphp
-
-                @foreach($teas as $tea)
-                <div class="product-card">
-                    <div style="height: 200px; background-color: {{ $tea['color'] }}; display:flex; align-items:center; justify-content:center; font-size: 5rem;">
-                        {{ $tea['emoji'] }}
-                    </div>
-                    <div class="product-card-body">
-                        <h3>{{ $tea['name'] }}</h3>
-                        <p>{{ $tea['desc'] }}</p>
-                        <a href="#" class="btn btn-orange" style="font-size:0.85rem; padding: 0.5rem 1.4rem;">Lire la suite</a>
+            <form method="POST" action="{{ route('login') }}" id="loginForm" novalidate>
+                @csrf
+                <div class="form-group">
+                    <label class="form-label" for="email">Identifiant</label>
+                    <input type="email" name="email" id="email" class="input-field"
+                        placeholder="Votre mail.."
+                        value="{{ old('email') }}" required autocomplete="email">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="password">Mot de passe</label>
+                    <div class="input-has-eye">
+                        <input type="password" name="password" id="password" class="input-field"
+                            placeholder="Mot de passe.."
+                            required autocomplete="current-password">
+                        <button type="button" class="eye-btn" onclick="toggleEye('password',this)" aria-label="Afficher">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="18"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
                     </div>
                 </div>
-                @endforeach
-            </div>
-
-            <button class="carousel-arrow" onclick="slideCarousel('teas', 1)">»</button>
-        </div>
-
-        <div style="text-align:center; margin-top: 2.5rem;">
-            <a href="#" class="btn btn-orange">En savoir plus</a>
-        </div>
-    </div>
-</section>
-
-{{-- ══════════════════════════════════════════
-     NOS COFFRETS
-══════════════════════════════════════════ --}}
-<section class="section section-beige" id="coffrets">
-    <div class="container">
-        <h2 class="section-title">Nos coffrets</h2>
-        <p class="section-subtitle">Des coffrets pensés pour offrir ou se faire plaisir, autour de nos créations emblématiques.</p>
-
-        <div style="position:relative; display:flex; align-items:center; gap: 1rem;">
-            <button class="carousel-arrow" onclick="slideCarousel('coffrets', -1)">«</button>
-
-            <div id="coffrets-carousel" style="display:grid; grid-template-columns: repeat(3,1fr); gap: 1.5rem; flex:1; overflow:hidden;">
-                @php
-                $coffrets = [
-                    [
-                        'name'  => 'Coffret bien-être',
-                        'img'   => 'coffret-bienetre.jpg',
-                        'emoji' => '🌿',
-                        'color' => '#d4f4d8',
-                        'desc'  => 'Ce coffret réunit une sélection de thés et d\'infusions bio spécialement conçus pour accompagner les moments de détente et de recentrage. Il met à l\'honneur des mélanges naturels aux propriétés apaisantes, idéaux pour une pause bien-être au quotidien.',
-                    ],
-                    [
-                        'name'  => 'Coffret découverte',
-                        'img'   => 'coffret-decouverte.jpg',
-                        'emoji' => '🎁',
-                        'color' => '#f4e8d4',
-                        'desc'  => 'Le coffret découverte permet d\'explorer l\'univers Thé Tip Top à travers plusieurs références emblématiques de la marque. Il offre une variété de saveurs et d\'arômes, afin de découvrir différents types de thés et d\'infusions issus d\'un savoir-faire artisanal.',
-                    ],
-                    [
-                        'name'  => 'Coffret premium',
-                        'img'   => 'coffret-premium.jpg',
-                        'emoji' => '✨',
-                        'color' => '#f0eaff',
-                        'desc'  => 'Ce coffret premium rassemble des créations sélectionnées pour leur qualité exceptionnelle et leur raffinement. Il s\'adresse aux amateurs de thé à la recherche d\'une expérience de dégustation plus exclusive, mettant en valeur des mélanges signatures.',
-                    ],
-                ];
-                @endphp
-
-                @foreach($coffrets as $coffret)
-                <div class="product-card">
-                    <div style="height: 200px; background-color: {{ $coffret['color'] }}; display:flex; align-items:center; justify-content:center; font-size: 5rem;">
-                        {{ $coffret['emoji'] }}
-                    </div>
-                    <div class="product-card-body">
-                        <h3>{{ $coffret['name'] }}</h3>
-                        <p>{{ $coffret['desc'] }}</p>
-                        <a href="#" class="btn btn-orange" style="font-size:0.85rem; padding: 0.5rem 1.4rem;">Lire la suite</a>
-                    </div>
+                <p style="font-size:.83rem;color:var(--txt-m);margin-bottom:1.4rem">
+                    Vous n'avez pas de compte ?
+                    <a href="{{ route('register') }}" style="color:var(--orange);font-weight:600;text-decoration:none"> S'inscrire</a>
+                </p>
+                <div style="text-align:center">
+                    <button type="submit" class="btn btn-orange" id="loginBtn" style="min-width:180px">
+                        Se connecter
+                    </button>
                 </div>
-                @endforeach
-            </div>
+            </form>
 
-            <button class="carousel-arrow" onclick="slideCarousel('coffrets', 1)">»</button>
-        </div>
-
-        <div style="text-align:center; margin-top: 2.5rem;">
-            <a href="#" class="btn btn-orange">En savoir plus</a>
-        </div>
-    </div>
-</section>
-
-{{-- ══════════════════════════════════════════
-     GRAND JEU-CONCOURS
-══════════════════════════════════════════ --}}
-<section class="section" id="jeu-concours">
-    <div class="container">
-        <h2 class="section-title">Grand jeu-concours</h2>
-
-        <div style="background: var(--cream); border-radius: 14px; padding: 1.5rem 2rem; margin-bottom: 2.5rem; font-size: 0.93rem; color: var(--text-mid); line-height: 1.8;">
-            <p>À l'occasion de l'ouverture de sa 10ᵉ boutique Thé Tip Top à Nice, la marque organise un grand jeu-concours exclusif destiné à faire découvrir son univers et ses créations.</p>
-            <p style="margin-top: 0.7rem;">Chaque client ayant effectué un achat supérieur à 49 € reçoit un code unique à 10 caractères lui permettant de participer en ligne. <strong>100 % des participations sont gagnantes</strong> et donnent accès à un lot à retirer en boutique ou en ligne, selon les modalités prévues par le règlement.</p>
-        </div>
-
-        <div class="grid-3">
-            @php
-            $lots = [
-                [
-                    'num'   => 1,
-                    'name'  => 'Infuseur à thé',
-                    'emoji' => '🫖',
-                    'color' => '#d4f4d8',
-                    'desc'  => 'Ce lot comprend un infuseur à thé réutilisable, pensé pour accompagner la dégustation des thés et infusions Thé Tip Top au quotidien. Pratique et simple d\'utilisation, il permet de profiter pleinement des arômes des mélanges bio et artisanaux de la marque.',
-                ],
-                [
-                    'num'   => 2,
-                    'name'  => 'Thé ou infusion (100 g)',
-                    'emoji' => '🍵',
-                    'color' => '#f4e8d4',
-                    'desc'  => 'Ce lot offre une boîte de 100 g de thé ou d\'infusion sélectionnée parmi les gammes emblématiques de Thé Tip Top. Il permet de découvrir des recettes naturelles issues d\'un savoir-faire artisanal, alliant plaisir de dégustation et bien-être.',
-                ],
-                [
-                    'num'   => 3,
-                    'name'  => 'Coffret découverte',
-                    'emoji' => '🎁',
-                    'color' => '#f0eaff',
-                    'desc'  => 'Ce lot correspond à un coffret découverte regroupant plusieurs références de thés et d\'infusions Thé Tip Top. Il a été conçu pour proposer une expérience complète de dégustation et mettre en valeur la diversité des créations de la marque.',
-                ],
-            ];
-            @endphp
-
-            @foreach($lots as $lot)
-            <div class="lot-card">
-                <div style="width:90px; height:90px; border-radius:50%; background:{{ $lot['color'] }}; display:flex; align-items:center; justify-content:center; font-size:2.8rem; margin: 0 auto 1rem; border: 4px solid white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-                    {{ $lot['emoji'] }}
-                </div>
-                <h3>Lot {{ $lot['num'] }} — {{ $lot['name'] }}</h3>
-                <p>{{ $lot['desc'] }}</p>
-            </div>
-            @endforeach
-        </div>
-
-        <div style="text-align:center; margin-top: 3rem;">
-            <a href="{{ route('login') }}" class="btn btn-orange" style="font-size: 1rem; padding: 0.85rem 2.5rem;">
-                Participer au jeu-concours
+            <div class="divider">ou continuer avec</div>
+            <a href="{{ route('auth.google') }}" class="oauth-btn">
+                <svg viewBox="0 0 24 24" width="20"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                Continuer avec Google
+            </a>
+            <a href="{{ route('auth.facebook') }}" class="oauth-btn">
+                <svg viewBox="0 0 24 24" width="20" fill="#1877F2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                Continuer avec Facebook
             </a>
         </div>
-    </div>
-</section>
 
-{{-- ══════════════════════════════════════════
-     FAQ
-══════════════════════════════════════════ --}}
-<section class="section section-beige" id="faq">
-    <div class="container" style="max-width: 850px;">
-        <h2 class="section-title">FAQ</h2>
-
-        @php
-        $faqs = [
-            [
-                'q' => 'Qu\'est-ce que Thé Tip Top ?',
-                'a' => 'Thé Tip Top est une maison française spécialisée dans les thés biologiques et artisanaux. Fondée par des passionnés d\'infusions, elle propose une gamme de créations signatures, de thés premium et de coffrets découverte, tous issus d\'une sélection rigoureuse de feuilles cultivées dans le respect de la nature.',
-            ],
-            [
-                'q' => 'Pourquoi Thé Tip Top organise ce jeu-concours ?',
-                'a' => 'Ce grand jeu-concours est organisé à l\'occasion de l\'ouverture de notre 10ᵉ boutique à Nice. C\'est une façon de remercier notre communauté de clients fidèles et de faire découvrir nos nouvelles créations de thés bio et artisanaux. 100 % des participations sont gagnantes !',
-            ],
-            [
-                'q' => 'Quels types de thés propose Thé Tip Top ?',
-                'a' => 'Thé Tip Top propose une large gamme incluant des thés verts, noirs, blancs, oolong, rooibos et infusions bio. Chaque référence est soigneusement sélectionnée et assemblée selon notre savoir-faire artisanal, pour offrir des expériences gustatives uniques adaptées à chaque moment de la journée.',
-            ],
-            [
-                'q' => 'Le jeu-concours est-il accessible à tous ?',
-                'a' => 'Le jeu-concours est accessible à toute personne majeure résidant en France métropolitaine ayant effectué un achat supérieur à 49 € dans l\'une de nos boutiques ou sur notre site. Chaque achat ouvre droit à un code unique à 10 caractères permettant de participer en ligne.',
-            ],
-            [
-                'q' => 'Mes données personnelles sont-elles protégées ?',
-                'a' => 'Absolument. Thé Tip Top s\'engage à protéger vos données personnelles conformément au RGPD. Vos informations sont utilisées uniquement dans le cadre du jeu-concours et ne sont jamais revendues à des tiers. Vous pouvez exercer vos droits d\'accès, de rectification et de suppression à tout moment via notre formulaire de contact.',
-            ],
-        ];
-        @endphp
-
-        <div style="margin-top: 1rem;">
-            @foreach($faqs as $faq)
-            <div class="faq-item">
-                <button class="faq-question">
-                    {{ $faq['q'] }}
-                    <span class="faq-icon">+</span>
-                </button>
-                <div class="faq-answer">{{ $faq['a'] }}</div>
-            </div>
-            @endforeach
+        {{-- Image --}}
+        <div class="auth-img">
+            <svg viewBox="0 0 300 380" fill="none" width="280">
+                <!-- Person silhouette holding cup -->
+                <rect x="80" y="300" width="140" height="80" rx="20" fill="rgba(255,255,255,.08)"/>
+                <!-- Cup -->
+                <path d="M130 200Q128 230,150 238Q172 230,170 200Z" fill="rgba(255,255,255,.2)"/>
+                <ellipse cx="150" cy="200" rx="20" ry="7" fill="rgba(255,255,255,.15)"/>
+                <path d="M170 208Q185 208,185 216Q185 224,170 223" stroke="rgba(255,255,255,.3)" stroke-width="4" fill="none" stroke-linecap="round"/>
+                <!-- Steam -->
+                <path d="M143 190C141 182,145 175,143 167" stroke="rgba(255,255,255,.4)" stroke-width="2" fill="none" stroke-linecap="round"/>
+                <path d="M150 188C150 180,154 173,150 165" stroke="rgba(255,255,255,.3)" stroke-width="2" fill="none" stroke-linecap="round"/>
+                <path d="M157 190C158 182,155 175,157 167" stroke="rgba(255,255,255,.4)" stroke-width="2" fill="none" stroke-linecap="round"/>
+                <!-- Brand box -->
+                <rect x="100" y="252" width="100" height="35" rx="8" fill="rgba(212,180,74,.2)" stroke="rgba(212,180,74,.4)" stroke-width="1"/>
+                <text x="150" y="266" text-anchor="middle" fill="rgba(255,255,255,.6)" font-size="8" font-family="Jost">THÉ TIP TOP</text>
+                <text x="150" y="278" text-anchor="middle" fill="rgba(212,180,74,.7)" font-size="7" font-family="Jost">Thé Tip Top</text>
+            </svg>
         </div>
     </div>
-</section>
-
-@endsection
+</div>
 
 @push('scripts')
 <script>
-// Simple carousel state
-const carouselState = {};
-
-function slideCarousel(name, dir) {
-    const el = document.getElementById(name + '-carousel');
-    const cards = el.querySelectorAll('.product-card');
-    const total = cards.length;
-    if (!carouselState[name]) carouselState[name] = 0;
-    carouselState[name] = (carouselState[name] + dir + total) % total;
-    const visible = window.innerWidth < 700 ? 1 : 3;
-    cards.forEach((c, i) => {
-        const pos = (i - carouselState[name] + total) % total;
-        c.style.display = pos < visible ? 'block' : 'none';
-    });
+function toggleEye(id, btn) {
+    const inp = document.getElementById(id);
+    inp.type = inp.type === 'text' ? 'password' : 'text';
 }
+document.getElementById('loginForm').addEventListener('submit', function() {
+    const btn = document.getElementById('loginBtn');
+    btn.textContent = '⏳ Connexion…';
+    btn.disabled = true;
+});
 </script>
 @endpush
+@endsection

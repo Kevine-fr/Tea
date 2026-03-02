@@ -1,355 +1,192 @@
-@extends('layouts.app')
+@extends('layouts.dashboard')
+@section('title','Tableau de bord — Thé Tip Top')
 
-@section('title', 'Mon Espace — Thé Tip Top')
-
-@push('styles')
-<style>
-body { background: var(--cream-light); }
-
-/* Override navbar for dashboard */
-.dash-header {
-    background: var(--white);
-    padding: 0.9rem 2rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    position: sticky;
-    top: 0;
-    z-index: 99;
-}
-
-/* Code input special */
-.code-input {
-    font-family: 'Courier New', monospace;
-    font-size: 1.1rem;
-    letter-spacing: 4px;
-    text-transform: uppercase;
-    text-align: center;
-    padding: 0.9rem 1.5rem;
-    border: 2px solid var(--border);
-    border-radius: 10px;
-    background: var(--white);
-    width: 100%;
-    outline: none;
-    transition: border-color 0.2s, box-shadow 0.2s;
-}
-.code-input:focus {
-    border-color: var(--green-light);
-    box-shadow: 0 0 0 3px rgba(61,122,90,0.12);
-}
-
-/* Status message after code check */
-.code-status-success {
-    background: #d4f4e2;
-    border: 1.5px solid #6fcf97;
-    color: #1a5e2e;
-    border-radius: 8px;
-    padding: 0.8rem 1.2rem;
-    font-size: 0.9rem;
-    font-weight: 500;
-}
-.code-status-error {
-    background: #fde8e8;
-    border: 1.5px solid #f5b6b6;
-    color: #b91c1c;
-    border-radius: 8px;
-    padding: 0.8rem 1.2rem;
-    font-size: 0.9rem;
-}
-.code-status-empty {
-    background: var(--white);
-    border: 1.5px solid var(--border);
-    color: var(--text-light);
-    border-radius: 8px;
-    padding: 0.8rem 1.2rem;
-    font-size: 0.9rem;
-    min-height: 2.8rem;
-}
-
-/* Sections */
-.dash-section {
-    background: var(--cream-light);
-    padding: 3rem 1.5rem;
-}
-.dash-section-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.6rem;
-    text-align: center;
-    margin-bottom: 1.8rem;
-    color: var(--text-dark);
-}
-
-/* Dashboard card */
-.dash-card {
-    background: var(--white);
-    border-radius: 16px;
-    padding: 2rem;
-    box-shadow: var(--shadow-sm);
-    max-width: 850px;
-    margin: 0 auto;
-}
-</style>
-@endpush
+@section('page_styles')
+.ticket-wrap{position:relative;z-index:1;padding:3rem 2rem 1.5rem;max-width:860px;margin:0 auto;}
+.ticket-card{display:grid;grid-template-columns:220px 1fr;gap:0;background:var(--white);border-radius:18px;box-shadow:var(--sh-sm);overflow:hidden;margin-top:1.8rem}
+.ticket-logo{background:var(--cream-m);display:flex;align-items:center;justify-content:center;padding:2rem 1.5rem}
+.ticket-form{padding:2rem 2.2rem}
+.code-input{text-transform:uppercase;letter-spacing:.1em;text-align:center;font-size:1rem;font-weight:600}
+.progress-bar{height:3px;border-radius:2px;background:var(--cream-d);margin-bottom:1.2rem;overflow:hidden;position:relative}
+.progress-fill{height:100%;border-radius:2px;width:0;transition:width .4s ease,background .4s ease}
+.part-wrap{position:relative;z-index:1;padding:1.5rem 2rem 4rem;max-width:860px;margin:0 auto}
+.part-card{background:var(--cream-m);border-radius:18px;padding:2.2rem}
+.part-table-wrap{background:var(--white);border-radius:14px;overflow:hidden;box-shadow:var(--sh-sm)}
+.code-badge{font-family:monospace;font-weight:700;font-size:.95rem;letter-spacing:.06em;color:var(--green)}
+.status-gagné{color:var(--green-m);font-weight:700}
+.status-attente{color:var(--txt-l);font-style:italic}
+.empty-state{text-align:center;padding:3.5rem 1rem}
+.empty-icon{font-size:3rem;margin-bottom:.8rem}
+@endsection
 
 @section('content')
 
-{{-- ── Header Dashboard ── --}}
-<div class="dash-header">
-    <div class="dash-user">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-            <circle cx="12" cy="7" r="4"/>
-        </svg>
-        <span>Mon profil</span>
-    </div>
+{{-- Banner --}}
+<section class="page-banner fade-up">
+    <svg class="orn" viewBox="0 0 90 70" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M20 60C24 44,40 36,35 18C46 32,54 50,40 64" fill="#b8962e" opacity=".35"/>
+        <path d="M20 60C30 50,38 40,35 18" stroke="#b8962e" stroke-width="1.5" fill="none"/>
+        <path d="M45 55C48 42,60 36,56 22C65 34,70 50,58 62" fill="#b8962e" opacity=".28"/>
+        <path d="M45 55C52 46,57 38,56 22" stroke="#b8962e" stroke-width="1.5" fill="none"/>
+    </svg>
+    <div style="text-align:center;flex:1"><span class="banner-tape">Tableau de bord</span></div>
+    <svg class="orn" viewBox="0 0 90 70" fill="none" style="transform:scaleX(-1)">
+        <path d="M20 60C24 44,40 36,35 18C46 32,54 50,40 64" fill="#b8962e" opacity=".35"/>
+        <path d="M20 60C30 50,38 40,35 18" stroke="#b8962e" stroke-width="1.5" fill="none"/>
+        <path d="M45 55C48 42,60 36,56 22C65 34,70 50,58 62" fill="#b8962e" opacity=".28"/>
+        <path d="M45 55C52 46,57 38,56 22" stroke="#b8962e" stroke-width="1.5" fill="none"/>
+    </svg>
+</section>
 
-    <form method="POST" action="{{ route('logout') }}">
-        @csrf
-        <button type="submit" style="background:none; border:none; cursor:pointer; font-size:0.9rem; color:var(--text-mid); font-family:inherit;">
-            Deconnexion
-        </button>
-    </form>
-</div>
+{{-- Code Entry --}}
+<section class="ticket-wrap">
+    <h2 class="fade-up s1" style="font-family:'Playfair Display',serif;font-size:1.65rem;font-weight:700;text-align:center;">
+        Saisir mon code de participation
+    </h2>
 
-{{-- ══════════════════════════════════════════
-     1. SAISIR MON CODE
-══════════════════════════════════════════ --}}
-<section class="dash-section">
-    <div class="container" style="max-width: 850px;">
-        <h2 class="dash-section-title">Saisir mon code de participation</h2>
+    @if($errors->has('code'))
+    <div class="alert alert-error fade-up s2" style="max-width:600px;margin:1rem auto 0">{{ $errors->first('code') }}</div>
+    @endif
 
-        @if(session('participation_success'))
-            <div class="alert alert-success" style="max-width:850px; margin: 0 auto 1.5rem;">
-                🎉 {{ session('participation_success') }}
-            </div>
-        @endif
-        @if(session('participation_error'))
-            <div class="alert alert-error" style="max-width:850px; margin: 0 auto 1.5rem;">
-                {{ session('participation_error') }}
-            </div>
-        @endif
+    <div class="ticket-card fade-up s2">
+        {{-- Logo side --}}
+        <div class="ticket-logo">
+            <svg viewBox="0 0 100 120" fill="none" width="90">
+                <!-- Cup body -->
+                <path d="M18 65Q16 100,50 108Q84 100,82 65Z" fill="#1e3d1a"/>
+                <ellipse cx="50" cy="65" rx="32" ry="10" fill="#2d5a27"/>
+                <!-- Handle -->
+                <path d="M82 72Q100 72,100 85Q100 98,82 96" stroke="#1e3d1a" stroke-width="5" fill="none" stroke-linecap="round"/>
+                <!-- Saucer -->
+                <ellipse cx="50" cy="109" rx="44" ry="8" fill="#d4b44a" opacity=".5"/>
+                <!-- Gold ring -->
+                <path d="M22 73Q50 80,78 73" stroke="#d4b44a" stroke-width="1.5" fill="none" opacity=".6"/>
+                <!-- Leaf 1 -->
+                <path d="M38 48C34 33,46 18,42 4C48 18,62 22,58 36C54 48,40 44,38 48Z" fill="#4a7c3f"/>
+                <path d="M38 48C42 33,46 18,46 6" stroke="#2d5a27" stroke-width="1.5" fill="none"/>
+                <!-- Leaf 2 -->
+                <path d="M56 40C52 28,62 16,60 4C65 16,76 20,74 32C72 42,58 38,56 40Z" fill="#6a9c5f"/>
+                <path d="M56 40C60 28,63 16,62 5" stroke="#4a7c3f" stroke-width="1.5" fill="none"/>
+                <!-- Gold dots -->
+                <circle cx="40" cy="88" r="2.5" fill="#d4b44a" opacity=".45"/>
+                <circle cx="60" cy="92" r="2" fill="#d4b44a" opacity=".4"/>
+            </svg>
+        </div>
 
-        <div class="dash-card">
-            <div class="grid-2" style="align-items: center; gap: 2rem;">
-
-                {{-- Illustration --}}
-                <div style="display:flex; align-items:center; justify-content:center; background: linear-gradient(135deg, #f0efe8, #e8e0d0); border-radius: 14px; padding: 2.5rem; min-height: 160px;">
-                    <div style="text-align: center;">
-                        <div style="font-size: 5rem; line-height: 1;">🍵</div>
-                        <p style="font-family:'Playfair Display',serif; font-style:italic; font-size:0.85rem; color:var(--gold); margin-top:0.5rem;">Thé Tip Top</p>
-                    </div>
+        {{-- Form side --}}
+        <div class="ticket-form">
+            <label class="form-label" for="codeInput">Entrez votre N° de ticket</label>
+            <form method="POST" action="{{ route('participate') }}" id="ticketForm" novalidate>
+                @csrf
+                <input type="text" name="code" id="codeInput"
+                    class="input-field code-input"
+                    placeholder="Code ticket.."
+                    maxlength="20"
+                    value="{{ old('code') }}"
+                    autocomplete="off"
+                    oninput="handleCode(this.value)"
+                    style="margin-bottom:.7rem">
+                <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+                <div style="text-align:center">
+                    <button type="submit" class="btn btn-orange" id="validateBtn" disabled
+                        style="min-width:180px">Valider</button>
                 </div>
-
-                {{-- Formulaire code --}}
-                <div>
-                    <form method="POST" action="{{ route('participate') }}">
-                        @csrf
-                        <label for="ticket_code" style="display:block; font-size:0.9rem; color:var(--text-mid); margin-bottom:0.6rem; font-weight:500;">
-                            Entrez votre N° de ticket
-                        </label>
-                        <input type="text"
-                               id="ticket_code"
-                               name="code"
-                               class="code-input @error('code') border-red-500 @enderror"
-                               placeholder="Code ticket.."
-                               maxlength="10"
-                               value="{{ old('code') }}"
-                               autocomplete="off">
-                        @error('code')
-                            <span style="color:var(--orange); font-size:0.82rem; display:block; margin-top:0.3rem;">{{ $message }}</span>
-                        @enderror
-
-                        <div style="display:flex; gap: 1rem; margin-top: 1.2rem;">
-                            <button type="button" onclick="addTicket()"
-                                    class="btn btn-green" style="flex:1; font-size:0.9rem;">
-                                Ajouter un ticket
-                            </button>
-                            <button type="submit"
-                                    class="btn btn-orange" style="flex:1; font-size:0.9rem;">
-                                Valider
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
+            </form>
         </div>
     </div>
 </section>
 
-{{-- ══════════════════════════════════════════
-     2. VÉRIFIER MON CODE
-══════════════════════════════════════════ --}}
-<section class="dash-section section-beige">
-    <div class="container" style="max-width: 850px;">
-        <h2 class="dash-section-title">Vérifier mon code</h2>
-
-        <div class="dash-card">
-            <p style="font-size:0.85rem; color:var(--text-mid); margin-bottom:1rem; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">
-                Etat du code
-            </p>
-
-            @if(session('code_status'))
-                <div class="code-status-{{ session('code_status_type', 'success') }}">
-                    {{ session('code_status') }}
-                </div>
-            @elseif($lastParticipation ?? false)
-                <div class="code-status-success">
-                    🎉 Félicitations ! Vous avez remporté un lot.
-                </div>
-            @else
-                <div class="code-status-empty">
-                    Aucun code vérifié récemment.
-                </div>
-            @endif
-        </div>
-    </div>
-</section>
-
-{{-- ══════════════════════════════════════════
-     3. MES PARTICIPATIONS
-══════════════════════════════════════════ --}}
-<section class="dash-section">
-    <div class="container" style="max-width: 850px;">
-        <h2 class="dash-section-title">Mes participations au jeu-concours</h2>
-
-        <div style="background: var(--white); border-radius: 16px; overflow:hidden; box-shadow: var(--shadow-sm);">
-            @if($participations->isEmpty())
-                <div style="padding: 3rem; text-align:center; color:var(--text-light);">
-                    <div style="font-size: 3rem; margin-bottom: 1rem;">🫖</div>
-                    <p>Vous n'avez pas encore participé.</p>
-                    <p style="font-size: 0.85rem; margin-top: 0.4rem;">Saisissez votre code ticket pour commencer !</p>
-                </div>
-            @else
-                <table class="table-participations">
-                    <thead>
-                        <tr>
-                            <th>Code</th>
-                            <th>Date</th>
-                            <th>Résultat</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($participations as $p)
-                        <tr>
-                            <td>
-                                <span style="font-family:monospace; font-size:0.95rem; color:var(--green-dark); font-weight:600;">
-                                    {{ $p->ticketCode->code }}
+{{-- Participations --}}
+<section class="part-wrap">
+    <div class="part-card fade-up s3">
+        <h2 style="font-family:'Playfair Display',serif;font-size:1.65rem;font-weight:700;text-align:center;margin-bottom:1.8rem">
+            Mes participations au jeu-concours
+        </h2>
+        <div class="part-table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>N° Ticket</th>
+                        <th>Résultat</th>
+                        <th>Date</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($participations as $p)
+                    <tr>
+                        <td><span class="code-badge">{{ $p->ticketCode->code ?? '—' }}</span></td>
+                        <td>
+                            @if($p->prize)
+                                <span class="win-text">🎉 Gagné</span>
+                            @else
+                                <span class="status-attente">En attente</span>
+                            @endif
+                        </td>
+                        <td style="color:var(--txt-l);font-size:.83rem">
+                            {{ \Carbon\Carbon::parse($p->participation_date)->format('d/m/Y') }}
+                        </td>
+                        <td>
+                            @if($p->prize && !$p->redemption)
+                                <a href="{{ route('redemption.create', $p->id) }}"
+                                   class="btn btn-orange btn-sm">Réclamer →</a>
+                            @elseif($p->redemption)
+                                <span style="font-size:.8rem;color:var(--green-m);font-weight:600">
+                                    @if($p->redemption->status==='completed') ✅ Remis
+                                    @elseif($p->redemption->status==='approved') ✔ Approuvé
+                                    @else ⏳ En cours @endif
                                 </span>
-                            </td>
-                            <td style="color:var(--text-mid); font-size:0.88rem;">
-                                {{ $p->participation_date->format('d/m/Y') }}
-                            </td>
-                            <td>
-                                @if($p->hasWon())
-                                    <span class="badge badge-won">🏆 Gagné</span>
-                                @elseif($p->redemption)
-                                    <span class="badge badge-pending">⏳ En attente</span>
-                                @else
-                                    <span class="badge badge-lost">Pas de lot</span>
-                                @endif
-                            </td>
-                            <td>
-                                @if($p->hasWon() && !$p->redemption)
-                                    <a href="{{ route('redemption.create', $p->id) }}"
-                                       class="btn btn-orange" style="font-size:0.8rem; padding: 0.3rem 1rem;">
-                                        Réclamer
-                                    </a>
-                                @elseif($p->redemption)
-                                    <span style="font-size:0.82rem; color:var(--text-light);">
-                                        {{ ucfirst($p->redemption->status) }}
-                                    </span>
-                                @else
-                                    <span style="font-size:0.82rem; color:var(--text-light);">—</span>
-                                @endif
-                            </td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-
-                {{-- Pagination --}}
-                @if($participations->hasPages())
-                <div style="padding: 1rem 1.5rem; border-top: 1px solid var(--border);">
-                    {{ $participations->links() }}
-                </div>
-                @endif
-            @endif
-        </div>
-    </div>
-</section>
-
-{{-- ══════════════════════════════════════════
-     4. SUIVI DE MES GAINS
-══════════════════════════════════════════ --}}
-<section class="dash-section section-beige">
-    <div class="container" style="max-width: 850px;">
-        <h2 class="dash-section-title">Suivi de mes gains</h2>
-
-        <div style="background:var(--white); border-radius:16px; overflow:hidden; box-shadow:var(--shadow-sm);">
-
-            @php
-                $pending   = $participations->filter(fn($p) => $p->redemption && $p->redemption->status === 'pending');
-                $approved  = $participations->filter(fn($p) => $p->redemption && $p->redemption->status === 'approved');
-                $completed = $participations->filter(fn($p) => $p->redemption && $p->redemption->status === 'completed');
-            @endphp
-
-            <div class="gains-grid">
-                {{-- Colonne En cours de traitement --}}
-                <div class="gains-col">
-                    <div class="gains-header">Gains en cours de traitement</div>
-                    @forelse($pending as $p)
-                        <div class="gains-item">{{ $p->prize->name ?? 'Lot' }}</div>
+                            @else
+                                <span style="color:var(--cream-d)">—</span>
+                            @endif
+                        </td>
+                    </tr>
                     @empty
-                        <div class="gains-item" style="color:var(--text-light); font-style:italic;">Aucun</div>
-                    @endforelse
-                </div>
-
-                {{-- Colonne Gains réclamés --}}
-                <div class="gains-col">
-                    <div class="gains-header">Gains réclamés</div>
-                    @forelse($approved as $p)
-                        <div class="gains-item">{{ $p->prize->name ?? 'Lot' }}</div>
-                    @empty
-                        <div class="gains-item" style="color:var(--text-light); font-style:italic;">Aucun</div>
-                    @endforelse
-                </div>
-
-                {{-- Colonne Gains remis / livrés --}}
-                <div class="gains-col">
-                    <div class="gains-header">Gains remis / livrés</div>
-                    @forelse($completed as $p)
-                        <div class="gains-item">
-                            <div style="font-weight:500;">{{ $p->prize->name ?? 'Lot' }}</div>
-                            <div style="font-size:0.8rem; color:var(--text-light); margin-top:2px;">
-                                @if($p->redemption->method === 'store') En boutique
-                                @elseif($p->redemption->method === 'mail') Par courrier
-                                @else En ligne @endif
+                    <tr>
+                        <td colspan="4">
+                            <div class="empty-state">
+                                <div class="empty-icon">🎫</div>
+                                <div style="font-weight:600;margin-bottom:.4rem">Aucune participation pour l'instant</div>
+                                <div style="font-size:.85rem;color:var(--txt-l)">Entrez votre premier code ci-dessus pour participer</div>
                             </div>
-                        </div>
-                    @empty
-                        <div class="gains-item" style="color:var(--text-light); font-style:italic;">Aucun</div>
+                        </td>
+                    </tr>
                     @endforelse
-                </div>
-            </div>
+                </tbody>
+            </table>
         </div>
+        @if($participations->hasPages())
+        <div style="padding:1.2rem;text-align:center">{{ $participations->links() }}</div>
+        @endif
     </div>
 </section>
-
-@endsection
 
 @push('scripts')
 <script>
-function addTicket() {
-    const input = document.getElementById('ticket_code');
-    input.value = '';
-    input.focus();
+function handleCode(v) {
+    const btn = document.getElementById('validateBtn');
+    const fill = document.getElementById('progressFill');
+    const len = v.trim().length;
+    document.getElementById('codeInput').value = v.toUpperCase();
+    if (len === 0) {
+        fill.style.width = '0'; fill.style.background = 'var(--cream-d)';
+        btn.disabled = true; btn.style.opacity = '.5';
+    } else if (len < 5) {
+        fill.style.width = '33%'; fill.style.background = '#e67e22';
+        btn.disabled = true; btn.style.opacity = '.6';
+    } else if (len < 8) {
+        fill.style.width = '66%'; fill.style.background = '#f1c40f';
+        btn.disabled = false; btn.style.opacity = '.85';
+    } else {
+        fill.style.width = '100%'; fill.style.background = 'var(--green-m)';
+        btn.disabled = false; btn.style.opacity = '1';
+    }
 }
-
-// Auto-uppercase code input
-document.getElementById('ticket_code').addEventListener('input', function() {
-    this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+document.getElementById('ticketForm').addEventListener('submit', function(e) {
+    const btn = document.getElementById('validateBtn');
+    btn.textContent = '⏳ Validation…';
+    btn.disabled = true;
 });
 </script>
 @endpush
+@endsection
