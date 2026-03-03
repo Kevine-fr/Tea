@@ -122,6 +122,7 @@ services:
         -Djenkins.model.JenkinsLocationConfiguration.url=https://jenkins.wk-archi-o22a-15m-g1.fr/
     volumes:
       - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - backend
 

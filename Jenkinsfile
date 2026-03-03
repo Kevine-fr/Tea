@@ -1,80 +1,99 @@
 pipeline {
-    agent any
+  agent {
+    dockerfile {
+      filename 'Dockerfile.ci'
+      args '-v $WORKSPACE:/workspace -w /workspace'
+    }
+  }
 
-    environment {
-        DB_CONNECTION = 'mysql'
-        DB_HOST       = 'db'
-        DB_PORT       = '3306'
-        DB_DATABASE   = 'tea_test'
-        DB_USERNAME   = 'root'
-        DB_PASSWORD   = credentials('MYSQL_ROOT_PASSWORD')
-        APP_KEY       = credentials('APP_KEY')
+  options {
+    timestamps()
+    disableConcurrentBuilds()
+  }
+
+  stages {
+    stage('Checkout') {
+      steps { checkout scm }
     }
 
-    stages {
-        stage('Checkout') {
-            steps {
-                checkout scm
-            }
-        }
-
-        stage('Install Dependencies') {
-            steps {
-                sh 'composer install --no-interaction --prefer-dist --optimize-autoloader'
-            }
-        }
-
-        stage('Environment Setup') {
-            steps {
-                sh '''
-                    cp .env.example .env
-                    sed -i "s|APP_ENV=.*|APP_ENV=testing|" .env
-                    sed -i "s|APP_DEBUG=.*|APP_DEBUG=true|" .env
-                    sed -i "s|DB_CONNECTION=.*|DB_CONNECTION=${DB_CONNECTION}|" .env
-                    sed -i "s|DB_HOST=.*|DB_HOST=${DB_HOST}|" .env
-                    sed -i "s|DB_PORT=.*|DB_PORT=${DB_PORT}|" .env
-                    sed -i "s|DB_DATABASE=.*|DB_DATABASE=${DB_DATABASE}|" .env
-                    sed -i "s|DB_USERNAME=.*|DB_USERNAME=${DB_USERNAME}|" .env
-                    sed -i "s|DB_PASSWORD=.*|DB_PASSWORD=${DB_PASSWORD}|" .env
-                    sed -i "s|SESSION_DRIVER=.*|SESSION_DRIVER=array|" .env
-                    sed -i "s|CACHE_STORE=.*|CACHE_STORE=array|" .env
-                    sed -i "s|QUEUE_CONNECTION=.*|QUEUE_CONNECTION=sync|" .env
-                    echo "APP_KEY=${APP_KEY}" >> .env
-                    php artisan config:clear
-                '''
-            }
-        }
-
-        stage('Database Setup') {
-            steps {
-                sh '''
-                    php artisan migrate:fresh --force --env=testing
-                '''
-            }
-        }
-
-        stage('Run Tests') {
-            steps {
-                sh 'php artisan test tests/Feature/Api/ --stop-on-failure'
-            }
-        }
+    stage('Install Dependencies') {
+      steps {
+        sh 'composer install --no-interaction --prefer-dist'
+      }
     }
 
-    post {
-        success {
-            echo '✅ All tests passed!'
-            githubNotify status: 'SUCCESS',
-                         description: '47 tests passed',
-                         context: 'ci/jenkins/tests'
-        }
-        failure {
-            echo '❌ Tests failed!'
-            githubNotify status: 'FAILURE',
-                         description: 'Tests failed — merge blocked',
-                         context: 'ci/jenkins/tests'
-        }
-        always {
-            cleanWs()
-        }
+    stage('Environment Setup (SQLite)') {
+      steps {
+        sh '''
+          set -e
+
+          if [ ! -f .env ]; then
+            cp .env.example .env
+          fi
+
+          # Forcer env de test
+          sed -i 's/^APP_ENV=.*/APP_ENV=testing/' .env || true
+          sed -i 's/^APP_DEBUG=.*/APP_DEBUG=true/' .env || true
+
+          # SQLite in memory (stable CI)
+          if grep -q '^DB_CONNECTION=' .env; then
+            sed -i 's/^DB_CONNECTION=.*/DB_CONNECTION=sqlite/' .env
+          else
+            echo 'DB_CONNECTION=sqlite' >> .env
+          fi
+
+          if grep -q '^DB_DATABASE=' .env; then
+            sed -i 's/^DB_DATABASE=.*/DB_DATABASE=:memory:/' .env
+          else
+            echo 'DB_DATABASE=:memory:' >> .env
+          fi
+
+          # éviter dépendances redis/queue/session en CI
+          grep -q '^CACHE_STORE=' .env && sed -i 's/^CACHE_STORE=.*/CACHE_STORE=array/' .env || echo 'CACHE_STORE=array' >> .env
+          grep -q '^SESSION_DRIVER=' .env && sed -i 's/^SESSION_DRIVER=.*/SESSION_DRIVER=array/' .env || echo 'SESSION_DRIVER=array' >> .env
+          grep -q '^QUEUE_CONNECTION=' .env && sed -i 's/^QUEUE_CONNECTION=.*/QUEUE_CONNECTION=sync/' .env || echo 'QUEUE_CONNECTION=sync' >> .env
+
+          php artisan key:generate --force || true
+          php artisan config:clear || true
+        '''
+      }
     }
+
+    stage('Run Tests') {
+      steps {
+        sh 'php artisan test --stop-on-failure'
+      }
+    }
+  }
+
+  post {
+    success {
+      echo '✅ Tests passed'
+      script {
+        // optionnel : si plugin/credentials GitHub configurés
+        try {
+          githubNotify status: 'SUCCESS',
+                       description: 'Tests passed',
+                       context: 'ci/jenkins/tests'
+        } catch (e) {
+          echo "githubNotify skipped: ${e}"
+        }
+      }
+    }
+    failure {
+      echo '❌ Tests failed'
+      script {
+        try {
+          githubNotify status: 'FAILURE',
+                       description: 'Tests failed — merge blocked',
+                       context: 'ci/jenkins/tests'
+        } catch (e) {
+          echo "githubNotify skipped: ${e}"
+        }
+      }
+    }
+    always {
+      cleanWs()
+    }
+  }
 }
