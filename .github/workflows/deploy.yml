@@ -123,11 +123,11 @@ jobs:
 
           # Arrêter les anciens conteneurs
           echo "🛑 Arrêt des anciens conteneurs..."
-          docker compose -f docker-compose.prod.yml down || true
+          docker compose -f docker-compose.app.prod.yml down || true
 
           # Rebuilder et démarrer
           echo "🚀 Démarrage des nouveaux conteneurs..."
-          docker compose -f docker-compose.prod.yml up -d --build
+          docker compose -f docker-compose.app.prod.yml up -d --build
 
           # Attendre le démarrage
           echo "⏳ Attente du démarrage des services..."
