@@ -60,7 +60,7 @@
             </div>
             @endif
 
-            <form method="POST" action="{{ route('register') }}" id="regForm" novalidate>
+            <form method="POST" action="{{ route('register.post') }}" id="regForm" novalidate>
                 @csrf
                 <div style="margin-bottom:1.1rem">
                     <input type="text" name="last_name" class="input-field" placeholder="Nom"

@@ -47,7 +47,7 @@
             </div>
             @endif
 
-            <form method="POST" action="{{ route('login') }}" id="loginForm" novalidate>
+            <form method="POST" action="{{ route('login.post') }}" id="loginForm" novalidate>
                 @csrf
                 <div class="form-group">
                     <label class="form-label" for="email">Identifiant</label>
@@ -68,7 +68,7 @@
                 </div>
                 <p style="font-size:.83rem;color:var(--txt-m);margin-bottom:1.4rem">
                     Vous n'avez pas de compte ?
-                    <a href="{{ route('register') }}" style="color:var(--orange);font-weight:600;text-decoration:none"> S'inscrire</a>
+                    <a href="{{ route('register.post') }}" style="color:var(--orange);font-weight:600;text-decoration:none"> S'inscrire</a>
                 </p>
                 <div style="text-align:center">
                     <button type="submit" class="btn btn-orange" id="loginBtn" style="min-width:180px">

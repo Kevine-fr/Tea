@@ -13,6 +13,8 @@ class User extends Authenticatable
     use HasUuids, HasApiTokens;
 
     protected $fillable = [
+        'first_name',
+        'last_name',
         'email',
         'password_hash',
         'birth_date',
@@ -36,7 +38,7 @@ class User extends Authenticatable
     // Alias pour compatibilité Auth (Laravel attend "password")
     public function getAuthPassword(): string
     {
-        return $this->password_hash;
+        return $this->password_hash ?? '';
     }
 
     // Relations

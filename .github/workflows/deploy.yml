@@ -9,127 +9,151 @@ jobs:
   deploy:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
-      
+
       - name: Add VPS to known hosts
         run: |
           mkdir -p ~/.ssh
           ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
-      
+
       - name: Deploy to VPS
         run: |
-          ssh ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} "bash -s" <<EOF
+          ssh ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} << EOF
           set -e
-          
+
           echo "📦 Préparation du déploiement..."
-          cd ~/tea-app || exit 1
-          
-          # Clone ou pull le repo avec le token
-          if [ ! -d ".git" ]; then
-            echo "📥 Clonage du repository..."
-            git clone https://${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}.git .
-          else
-            echo "🔄 Mise à jour du code..."
-            git remote set-url origin https://${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}.git
-            git fetch origin
-            git reset --hard origin/${{ github.ref_name }}
-          fi
-          
-          # Créer le fichier .env avec toutes les variables
+          cd /home/deploy/tea-app || exit 1
+
+          echo "🔄 Mise à jour du code..."
+          git remote set-url origin https://${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}.git
+          git fetch origin
+          git reset --hard origin/${{ github.ref_name }}
+
           echo "⚙️ Configuration de l'environnement..."
-          cat > .env <<ENVEOF
-          # Base de données
+          cat > .env << 'ENVEOF'
+          APP_NAME="The Tip Top"
+          APP_ENV=production
+          APP_DEBUG=false
+          APP_URL=https://${{ secrets.APP_DOMAIN }}
+
+          DB_CONNECTION=mysql
+          DB_HOST=db
+          DB_PORT=3306
+          DB_DATABASE=tea
+          DB_USERNAME=root
+          DB_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
+
           MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
-          
-          # Grafana
+          MYSQL_DATABASE=tea
+
+          SESSION_DRIVER=database
+          SESSION_LIFETIME=120
+
+          CACHE_STORE=redis
+          REDIS_HOST=redis
+          REDIS_PORT=6379
+
+          MAIL_MAILER=${{ secrets.MAIL_MAILER }}
+          MAIL_HOST=${{ secrets.MAIL_HOST }}
+          MAIL_PORT=${{ secrets.MAIL_PORT }}
+          MAIL_USERNAME=${{ secrets.MAIL_USERNAME }}
+          MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }}
+          MAIL_ENCRYPTION=${{ secrets.MAIL_ENCRYPTION }}
+          MAIL_FROM_ADDRESS=${{ secrets.MAIL_FROM_ADDRESS }}
+          MAIL_FROM_NAME=${{ secrets.MAIL_FROM_NAME }}
+
+          APP_DOMAIN=${{ secrets.APP_DOMAIN }}
           GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}
           GRAFANA_SMTP_USER=${{ secrets.GRAFANA_SMTP_USER }}
           GRAFANA_SMTP_PASSWORD=${{ secrets.GRAFANA_SMTP_PASSWORD }}
-          
-          # Laravel
-          APP_KEY=
-          
-          # Domaine de l'application
-          APP_DOMAIN=${{ secrets.APP_DOMAIN }}
           ENVEOF
-          
-          # Générer APP_KEY si nécessaire
+
+          # Générer APP_KEY si absente
           if ! grep -q 'APP_KEY=base64:' .env; then
             echo "🔑 Génération de APP_KEY..."
             APP_KEY=\$(docker run --rm php:8.2-cli php -r "echo 'base64:' . base64_encode(random_bytes(32));")
-            sed -i "s|APP_KEY=|APP_KEY=\${APP_KEY}|g" .env
+            echo "APP_KEY=\${APP_KEY}" >> .env
           fi
-          
+
           # Créer les dossiers de monitoring
           mkdir -p monitoring/prometheus
           mkdir -p monitoring/grafana/provisioning/datasources
-          
-          # Créer prometheus.yml
+
+          # Créer prometheus.yml si absent
           if [ ! -f monitoring/prometheus/prometheus.yml ]; then
-            cat > monitoring/prometheus/prometheus.yml <<PROMEOF
+            cat > monitoring/prometheus/prometheus.yml << 'PROMEOF'
           global:
             scrape_interval: 15s
             evaluation_interval: 15s
-          
+
           scrape_configs:
             - job_name: 'prometheus'
               static_configs:
                 - targets: ['localhost:9090']
-          
+
             - job_name: 'laravel-app'
               static_configs:
                 - targets: ['app:8000']
               metrics_path: '/metrics'
               scrape_interval: 5s
-          
+
             - job_name: 'node-exporter'
               static_configs:
                 - targets: ['node-exporter:9100']
-          
+
             - job_name: 'cadvisor'
               static_configs:
                 - targets: ['cadvisor:8080']
           PROMEOF
           fi
-          
+
+          # Vider le cache bootstrap
+          rm -f bootstrap/cache/packages.php bootstrap/cache/services.php bootstrap/cache/routes-v7.php
+
+          # Désactiver ssl.conf pendant le démarrage
+          mv nginx/conf.d/ssl.conf nginx/conf.d/ssl.conf.disabled 2>/dev/null || true
+
           # Arrêter les anciens conteneurs
           echo "🛑 Arrêt des anciens conteneurs..."
           docker compose -f docker-compose.prod.yml down || true
-          
+
           # Rebuilder et démarrer
           echo "🚀 Démarrage des nouveaux conteneurs..."
           docker compose -f docker-compose.prod.yml up -d --build
-          
+
           # Attendre le démarrage
           echo "⏳ Attente du démarrage des services..."
-          sleep 20
-          
+          sleep 30
+
           # Migrations
           echo "🔧 Exécution des migrations..."
           docker exec tea_serveur php artisan migrate --force || echo "⚠️ Migrations échouées"
-          
-          # Optimisations
+
+          # Vider puis recréer les caches Laravel
           echo "⚡ Optimisation de Laravel..."
+          docker exec tea_serveur php artisan config:clear || true
+          docker exec tea_serveur php artisan view:clear || true
+          docker exec tea_serveur php artisan route:clear || true
           docker exec tea_serveur php artisan config:cache || true
           docker exec tea_serveur php artisan route:cache || true
           docker exec tea_serveur php artisan view:cache || true
-          
+
           # État des conteneurs
           echo ""
           echo "📊 État des conteneurs :"
           docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-          
+
           echo ""
-          echo "✅ Déploiement terminé avec succès !"
-          echo "🌐 Application : http://${{ secrets.APP_DOMAIN }}"
-          echo "📊 Grafana : http://${{ secrets.APP_DOMAIN }}/grafana"
-          echo "📈 Prometheus : http://${{ secrets.APP_DOMAIN }}/prometheus"
+          echo "✅ Déploiement terminé !"
+          echo "🌐 Application  : https://${{ secrets.APP_DOMAIN }}"
+          echo "📊 Grafana      : https://${{ secrets.APP_DOMAIN }}/grafana"
+          echo "📈 Prometheus   : https://${{ secrets.APP_DOMAIN }}/prometheus"
           EOF

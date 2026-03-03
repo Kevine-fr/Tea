@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -26,26 +27,27 @@ class AuthWebController extends Controller
     // ─── Traitement login ─────────────────────────────────────────────────────
     public function login(Request $request)
     {
-        $credentials = $request->validate([
+        $request->validate([
             'email'    => ['required', 'email'],
             'password' => ['required'],
         ]);
 
-        if (Auth::attempt($credentials, $request->boolean('remember'))) {
-            $request->session()->regenerate();
+        $user = User::where('email', $request->email)->first();
 
-            $user = Auth::user();
-
-            if ($user->isAdmin() || $user->isEmployee()) {
-                return redirect()->route('admin.dashboard');
-            }
-
-            return redirect()->intended(route('dashboard'));
+        if (!$user || !Hash::check($request->password, $user->password_hash)) {
+            return back()
+                ->withInput($request->only('email'))
+                ->withErrors(['email' => 'Identifiants incorrects. Veuillez réessayer.']);
         }
 
-        return back()
-            ->withInput($request->only('email'))
-            ->withErrors(['email' => 'Identifiants incorrects. Veuillez réessayer.']);
+        Auth::login($user, $request->boolean('remember'));
+        $request->session()->regenerate();
+
+        if ($user->isAdmin() || $user->isEmployee()) {
+            return redirect()->route('admin.dashboard');
+        }
+
+        return redirect()->intended(route('dashboard'));
     }
 
     // ─── Traitement register ──────────────────────────────────────────────────
@@ -69,12 +71,15 @@ class AuthWebController extends Controller
             'birth_date.before'     => 'Vous devez avoir au moins 18 ans pour participer.',
         ]);
 
+        // Récupérer l'id du rôle "user"
+        $userRoleId = Role::where('name', 'user')->value('id');
+
         $user = User::create([
             'last_name'     => $validated['last_name'],
             'first_name'    => $validated['first_name'],
             'email'         => $validated['email'],
             'password_hash' => Hash::make($validated['password']),
-            'role'          => 'user',
+            'role_id'       => $userRoleId,
             'birth_date'    => $validated['birth_date'] ?? null,
         ]);
 
