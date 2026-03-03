@@ -20,26 +20,24 @@ class ParticipationService
      */
     public function participate(User $user, string $code): Participation
     {
-        return DB::transaction(function () use ($user, $code) {
+        // Pre-checks hors transaction pour éviter les problèmes de SAVEPOINT MySQL
+        $ticket = TicketCode::where('code', $code)->first();
+        if (!$ticket) {
+            throw TicketCodeException::notFound();
+        }
+        if ($ticket->is_used) {
+            throw TicketCodeException::alreadyUsed();
+        }
+        $existing = Participation::where('ticket_code_id', $ticket->id)->exists();
+        if ($existing) {
+            throw ParticipationException::alreadyParticipated();
+        }
 
-            // 1. Valider le code ticket (lock pour éviter les race conditions)
+        return DB::transaction(function () use ($user, $code) {
+            // Re-fetch avec lock pour éviter les race conditions
             $ticket = TicketCode::where('code', $code)
                                 ->lockForUpdate()
                                 ->first();
-
-            if (!$ticket) {
-                throw TicketCodeException::notFound();
-            }
-
-            if ($ticket->is_used) {
-                throw TicketCodeException::alreadyUsed();
-            }
-
-            // 2. Vérifier que ce code n'est pas déjà en participation (double check)
-            $existing = Participation::where('ticket_code_id', $ticket->id)->exists();
-            if ($existing) {
-                throw ParticipationException::alreadyParticipated();
-            }
 
             // 3. Attribuer un lot aléatoirement (si disponible)
             $prize = Prize::where('stock', '>', 0)
