@@ -108,10 +108,6 @@ pipeline {
       echo '✅ Tests passed'
     }
 
-    failure {
-      echo '❌ Tests failed'
-    }
-
     always {
       script {
         try {
