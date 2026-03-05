@@ -20,7 +20,7 @@ pipeline {
     DB_PORT = '3306'
     DB_DATABASE = 'tea_test'
     DB_USERNAME = 'root'
-    DB_PASSWORD = credentials('tea_mysql_root_password')  // <-- on met le secret Jenkins ici
+    DB_PASSWORD = credentials('tea_mysql_root_password')
 
     CACHE_STORE = 'array'
     SESSION_DRIVER = 'array'
@@ -29,13 +29,15 @@ pipeline {
   }
 
   stages {
-    stage('Checkout') { steps { checkout scm } }
+    stage('Checkout') {
+      steps { checkout scm }
+    }
 
     stage('Install Dependencies') {
       steps { sh 'composer install --no-interaction --prefer-dist' }
     }
 
-    stage('Wait for MySQL') {
+    stage('Wait for MySQL (server only)') {
       steps {
         sh '''
           set -e
@@ -44,18 +46,36 @@ pipeline {
 
           php -m | grep -i pdo_mysql
 
+          echo "Waiting for MySQL server at ${DB_HOST}:${DB_PORT}..."
           php -r '
-            $host=getenv("DB_HOST"); $port=getenv("DB_PORT"); $db=getenv("DB_DATABASE");
+            $host=getenv("DB_HOST"); $port=getenv("DB_PORT");
             $user=getenv("DB_USERNAME"); $pass=getenv("DB_PASSWORD");
-            $dsn="mysql:host=$host;port=$port;dbname=$db;charset=utf8mb4";
+            $dsn="mysql:host=$host;port=$port;charset=utf8mb4";
             $deadline=time()+120;
             while (true) {
-              try { new PDO($dsn,$user,$pass,[PDO::ATTR_TIMEOUT=>2]); echo "MySQL OK\\n"; exit(0); }
+              try { new PDO($dsn,$user,$pass,[PDO::ATTR_TIMEOUT=>2]); echo "MySQL SERVER OK\\n"; exit(0); }
               catch (Throwable $e) {
                 if (time()>$deadline) { fwrite(STDERR,"MySQL NOT READY: ".$e->getMessage()."\\n"); exit(1); }
                 sleep(2);
               }
             }
+          '
+        '''
+      }
+    }
+
+    stage('Ensure test database') {
+      steps {
+        sh '''
+          set -e
+          echo "Ensuring database ${DB_DATABASE} exists..."
+          php -r '
+            $host=getenv("DB_HOST"); $port=getenv("DB_PORT");
+            $user=getenv("DB_USERNAME"); $pass=getenv("DB_PASSWORD");
+            $db=getenv("DB_DATABASE");
+            $pdo=new PDO("mysql:host=$host;port=$port;charset=utf8mb4",$user,$pass,[PDO::ATTR_TIMEOUT=>2]);
+            $pdo->exec("CREATE DATABASE IF NOT EXISTS `".$db."` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+            echo "DB ensured: ".$db."\\n";
           '
         '''
       }
@@ -72,6 +92,10 @@ pipeline {
           php artisan cache:clear || true
           rm -f bootstrap/cache/*.php || true
 
+          echo "Sanity DB:"
+          php -r 'echo "DB_HOST=".getenv("DB_HOST").PHP_EOL;'
+          php -r 'echo "DB_DATABASE=".getenv("DB_DATABASE").PHP_EOL;'
+
           php artisan migrate:fresh --seed --force
         '''
       }
@@ -83,6 +107,8 @@ pipeline {
   }
 
   post {
-    always { cleanWs() }
+    always {
+      cleanWs()
+    }
   }
 }
