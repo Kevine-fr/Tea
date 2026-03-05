@@ -128,7 +128,7 @@ services:
     networks:
       - backend
     group_add:
-      - "998"
+      - "988"
 
 volumes:
   prometheus_data:
