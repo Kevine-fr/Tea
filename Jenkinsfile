@@ -2,8 +2,8 @@ pipeline {
   agent {
     dockerfile {
       filename 'Dockerfile.ci'
-      // ton args est OK
-      args '-v $WORKSPACE:/workspace -w /workspace'
+      // Rejoint le réseau compose pour résoudre mysql + conserve workspace
+      args "--network tea-app_backend -v ${WORKSPACE}:/workspace -w /workspace"
     }
   }
 
@@ -17,7 +17,7 @@ pipeline {
     APP_DEBUG = 'true'
 
     DB_CONNECTION = 'mysql'
-    DB_HOST = 'mysql'
+    DB_HOST = 'mysql'      // à confirmer via DNS Debug (mysql vs mysql_tea)
     DB_PORT = '3306'
     DB_DATABASE = 'tea_test'
     DB_USERNAME = 'root'
@@ -34,6 +34,19 @@ pipeline {
       steps { checkout scm }
     }
 
+    stage('DNS Debug') {
+      steps {
+        sh '''
+          set -e
+          echo "== DNS =="
+          getent hosts mysql || true
+          getent hosts mysql_tea || true
+          echo "== ENV DB_ =="
+          env | grep -E '^DB_' || true
+        '''
+      }
+    }
+
     stage('Install Dependencies') {
       steps {
         sh 'composer install --no-interaction --prefer-dist'
@@ -45,20 +58,21 @@ pipeline {
         sh '''
           set -e
 
-          # Debug rapide
           php -v
           php -m | grep -i pdo_mysql || (echo "pdo_mysql missing" && exit 1)
 
-          echo "Waiting for MySQL at ${DB_HOST}:${DB_PORT}..."
-          # ping MySQL via PHP (pas besoin de mysql-client)
+          echo "Waiting for MySQL at ${DB_HOST}:${DB_PORT} (db=${DB_DATABASE})..."
           php -r '
             $host=getenv("DB_HOST"); $port=getenv("DB_PORT"); $db=getenv("DB_DATABASE");
             $user=getenv("DB_USERNAME"); $pass=getenv("DB_PASSWORD");
             $dsn="mysql:host=$host;port=$port;dbname=$db;charset=utf8mb4";
-            $deadline=time()+60;
+            $deadline=time()+90;
             while (true) {
-              try { new PDO($dsn,$user,$pass,[PDO::ATTR_TIMEOUT=>2]); echo "MySQL OK\\n"; exit(0); }
-              catch (Throwable $e) { if (time()>$deadline) { fwrite(STDERR,"MySQL NOT READY: ".$e->getMessage()."\\n"); exit(1); } sleep(2); }
+              try { new PDO($dsn,$user,$pass,[PDO::ATTR_TIMEOUT=>2]); echo "MySQL OK\n"; exit(0); }
+              catch (Throwable $e) {
+                if (time()>$deadline) { fwrite(STDERR,"MySQL NOT READY: ".$e->getMessage()."\n"); exit(1); }
+                sleep(2);
+              }
             }
           '
         '''
@@ -70,23 +84,25 @@ pipeline {
         sh '''
           set -e
 
-          # Garantir un .env (Laravel le lit parfois selon ton code)
+          # Garantir un .env (certains projets lisent .env même en CI)
           if [ ! -f .env ]; then
             cp .env.example .env
           fi
 
-          # IMPORTANT: ne pas forcer sqlite ici
-          # On s'appuie sur les variables d'environnement du pipeline
-
           php artisan key:generate --force || true
 
-          # Très important : éviter un ancien cache de config qui figerait sqlite
-          php artisan config:clear
-          php artisan cache:clear
+          # Nettoyer caches (sinon ça peut "bloquer" sqlite)
+          php artisan config:clear || true
+          php artisan cache:clear || true
+          rm -f bootstrap/cache/config.php bootstrap/cache/packages.php bootstrap/cache/services.php || true
 
-          # Sanity check: doit afficher mysql
+          echo "Sanity:"
           php -r 'echo "DB_CONNECTION env=".getenv("DB_CONNECTION").PHP_EOL;'
-          php artisan tinker --execute="dump(config('database.default'));"
+          php -r 'echo "DB_HOST env=".getenv("DB_HOST").PHP_EOL;'
+
+          # Vérifier ce que Laravel voit réellement
+          php artisan env || true
+          php artisan config:show database.default || true
 
           php artisan migrate:fresh --seed --force
         '''
