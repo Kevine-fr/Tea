@@ -127,6 +127,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - backend
+    group_add:
+      - "998"
 
 volumes:
   prometheus_data:
