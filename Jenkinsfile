@@ -2,8 +2,8 @@ pipeline {
   agent {
     dockerfile {
       filename 'Dockerfile.ci'
-      // Rejoint le réseau compose pour résoudre mysql + conserve workspace
-      args "--network tea-app_backend -v ${WORKSPACE}:/workspace -w /workspace"
+      // uniquement rejoindre le réseau docker compose
+      args "--network tea-app_backend"
     }
   }
 
@@ -17,7 +17,7 @@ pipeline {
     APP_DEBUG = 'true'
 
     DB_CONNECTION = 'mysql'
-    DB_HOST = 'mysql'      // à confirmer via DNS Debug (mysql vs mysql_tea)
+    DB_HOST = 'mysql'
     DB_PORT = '3306'
     DB_DATABASE = 'tea_test'
     DB_USERNAME = 'root'
@@ -30,19 +30,22 @@ pipeline {
   }
 
   stages {
+
     stage('Checkout') {
-      steps { checkout scm }
+      steps {
+        checkout scm
+      }
     }
 
     stage('DNS Debug') {
       steps {
         sh '''
-          set -e
           echo "== DNS =="
           getent hosts mysql || true
           getent hosts mysql_tea || true
+
           echo "== ENV DB_ =="
-          env | grep -E '^DB_' || true
+          env | grep DB_ || true
         '''
       }
     }
@@ -59,18 +62,30 @@ pipeline {
           set -e
 
           php -v
-          php -m | grep -i pdo_mysql || (echo "pdo_mysql missing" && exit 1)
+          php -m | grep -i pdo_mysql
 
-          echo "Waiting for MySQL at ${DB_HOST}:${DB_PORT} (db=${DB_DATABASE})..."
+          echo "Waiting for MySQL..."
+
           php -r '
-            $host=getenv("DB_HOST"); $port=getenv("DB_PORT"); $db=getenv("DB_DATABASE");
-            $user=getenv("DB_USERNAME"); $pass=getenv("DB_PASSWORD");
+            $host=getenv("DB_HOST");
+            $port=getenv("DB_PORT");
+            $db=getenv("DB_DATABASE");
+            $user=getenv("DB_USERNAME");
+            $pass=getenv("DB_PASSWORD");
+
             $dsn="mysql:host=$host;port=$port;dbname=$db;charset=utf8mb4";
             $deadline=time()+90;
+
             while (true) {
-              try { new PDO($dsn,$user,$pass,[PDO::ATTR_TIMEOUT=>2]); echo "MySQL OK\n"; exit(0); }
-              catch (Throwable $e) {
-                if (time()>$deadline) { fwrite(STDERR,"MySQL NOT READY: ".$e->getMessage()."\n"); exit(1); }
+              try {
+                new PDO($dsn,$user,$pass);
+                echo "MySQL OK\n";
+                exit(0);
+              } catch (Throwable $e) {
+                if (time()>$deadline) {
+                  fwrite(STDERR,"MySQL NOT READY: ".$e->getMessage()."\n");
+                  exit(1);
+                }
                 sleep(2);
               }
             }
@@ -84,25 +99,20 @@ pipeline {
         sh '''
           set -e
 
-          # Garantir un .env (certains projets lisent .env même en CI)
           if [ ! -f .env ]; then
             cp .env.example .env
           fi
 
           php artisan key:generate --force || true
 
-          # Nettoyer caches (sinon ça peut "bloquer" sqlite)
-          php artisan config:clear || true
-          php artisan cache:clear || true
-          rm -f bootstrap/cache/config.php bootstrap/cache/packages.php bootstrap/cache/services.php || true
+          php artisan config:clear
+          php artisan cache:clear
 
-          echo "Sanity:"
-          php -r 'echo "DB_CONNECTION env=".getenv("DB_CONNECTION").PHP_EOL;'
-          php -r 'echo "DB_HOST env=".getenv("DB_HOST").PHP_EOL;'
+          rm -f bootstrap/cache/*.php || true
 
-          # Vérifier ce que Laravel voit réellement
-          php artisan env || true
-          php artisan config:show database.default || true
+          echo "Sanity check"
+          php -r 'echo getenv("DB_CONNECTION").PHP_EOL;'
+          php -r 'echo getenv("DB_HOST").PHP_EOL;'
 
           php artisan migrate:fresh --seed --force
         '''
@@ -117,6 +127,7 @@ pipeline {
   }
 
   post {
+
     success {
       echo '✅ Tests passed'
       script {
@@ -125,10 +136,11 @@ pipeline {
                        description: 'Tests passed',
                        context: 'ci/jenkins/tests'
         } catch (e) {
-          echo "githubNotify skipped: ${e}"
+          echo "githubNotify skipped"
         }
       }
     }
+
     failure {
       echo '❌ Tests failed'
       script {
@@ -137,10 +149,11 @@ pipeline {
                        description: 'Tests failed — merge blocked',
                        context: 'ci/jenkins/tests'
         } catch (e) {
-          echo "githubNotify skipped: ${e}"
+          echo "githubNotify skipped"
         }
       }
     }
+
     always {
       cleanWs()
     }
