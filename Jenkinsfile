@@ -17,7 +17,7 @@ pipeline {
     APP_DEBUG = 'true'
 
     DB_CONNECTION = 'mysql'
-    DB_HOST = 'mysql'
+    DB_HOST = 'mysql_tea'
     DB_PORT = '3306'
     DB_DATABASE = 'tea_test'
     DB_USERNAME = 'root'
