@@ -43,7 +43,6 @@ pipeline {
           set -e
           echo "DNS:"
           getent hosts db || true
-
           php -m | grep -i pdo_mysql
 
           echo "Waiting for MySQL server at ${DB_HOST}:${DB_PORT}..."
@@ -92,23 +91,56 @@ pipeline {
           php artisan cache:clear || true
           rm -f bootstrap/cache/*.php || true
 
-          echo "Sanity DB:"
-          php -r 'echo "DB_HOST=".getenv("DB_HOST").PHP_EOL;'
-          php -r 'echo "DB_DATABASE=".getenv("DB_DATABASE").PHP_EOL;'
-
           php artisan migrate:fresh --seed --force
         '''
       }
     }
 
     stage('Run Tests') {
-      steps { sh 'php artisan test --stop-on-failure' }
+      steps {
+        sh 'php artisan test --stop-on-failure'
+      }
     }
   }
 
   post {
+    success {
+      echo '✅ Tests passed'
+      script {
+        // ne doit JAMAIS faire échouer le build si le plugin manque / bug
+        try {
+          githubNotify status: 'SUCCESS',
+                       description: 'Tests passed',
+                       context: 'ci/jenkins/tests'
+        } catch (e) {
+          echo "githubNotify skipped: ${e}"
+        }
+      }
+    }
+
+    failure {
+      echo '❌ Tests failed'
+      script {
+        try {
+          githubNotify status: 'FAILURE',
+                       description: 'Tests failed',
+                       context: 'ci/jenkins/tests'
+        } catch (e) {
+          echo "githubNotify skipped: ${e}"
+        }
+      }
+    }
+
     always {
-      cleanWs()
+      // cleanWs peut échouer si pas de node context, ici on EST dans un agent docker donc OK
+      // mais on le protège quand même
+      script {
+        try {
+          cleanWs()
+        } catch (e) {
+          echo "cleanWs skipped: ${e}"
+        }
+      }
     }
   }
 }
