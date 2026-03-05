@@ -2,6 +2,7 @@ pipeline {
   agent {
     dockerfile {
       filename 'Dockerfile.ci'
+      // ton args est OK
       args '-v $WORKSPACE:/workspace -w /workspace'
     }
   }
@@ -9,6 +10,23 @@ pipeline {
   options {
     timestamps()
     disableConcurrentBuilds()
+  }
+
+  environment {
+    APP_ENV = 'testing'
+    APP_DEBUG = 'true'
+
+    DB_CONNECTION = 'mysql'
+    DB_HOST = 'mysql'
+    DB_PORT = '3306'
+    DB_DATABASE = 'tea_test'
+    DB_USERNAME = 'root'
+    DB_PASSWORD = 'secret'
+
+    CACHE_STORE = 'array'
+    SESSION_DRIVER = 'array'
+    QUEUE_CONNECTION = 'sync'
+    MAIL_MAILER = 'array'
   }
 
   stages {
@@ -22,39 +40,55 @@ pipeline {
       }
     }
 
-    stage('Environment Setup (SQLite)') {
+    stage('Wait for MySQL') {
       steps {
         sh '''
           set -e
 
+          # Debug rapide
+          php -v
+          php -m | grep -i pdo_mysql || (echo "pdo_mysql missing" && exit 1)
+
+          echo "Waiting for MySQL at ${DB_HOST}:${DB_PORT}..."
+          # ping MySQL via PHP (pas besoin de mysql-client)
+          php -r '
+            $host=getenv("DB_HOST"); $port=getenv("DB_PORT"); $db=getenv("DB_DATABASE");
+            $user=getenv("DB_USERNAME"); $pass=getenv("DB_PASSWORD");
+            $dsn="mysql:host=$host;port=$port;dbname=$db;charset=utf8mb4";
+            $deadline=time()+60;
+            while (true) {
+              try { new PDO($dsn,$user,$pass,[PDO::ATTR_TIMEOUT=>2]); echo "MySQL OK\\n"; exit(0); }
+              catch (Throwable $e) { if (time()>$deadline) { fwrite(STDERR,"MySQL NOT READY: ".$e->getMessage()."\\n"); exit(1); } sleep(2); }
+            }
+          '
+        '''
+      }
+    }
+
+    stage('Environment Setup') {
+      steps {
+        sh '''
+          set -e
+
+          # Garantir un .env (Laravel le lit parfois selon ton code)
           if [ ! -f .env ]; then
             cp .env.example .env
           fi
 
-          # Forcer env de test
-          sed -i 's/^APP_ENV=.*/APP_ENV=testing/' .env || true
-          sed -i 's/^APP_DEBUG=.*/APP_DEBUG=true/' .env || true
-
-          # SQLite in memory (stable CI)
-          if grep -q '^DB_CONNECTION=' .env; then
-            sed -i 's/^DB_CONNECTION=.*/DB_CONNECTION=sqlite/' .env
-          else
-            echo 'DB_CONNECTION=sqlite' >> .env
-          fi
-
-          if grep -q '^DB_DATABASE=' .env; then
-            sed -i 's/^DB_DATABASE=.*/DB_DATABASE=:memory:/' .env
-          else
-            echo 'DB_DATABASE=:memory:' >> .env
-          fi
-
-          # éviter dépendances redis/queue/session en CI
-          grep -q '^CACHE_STORE=' .env && sed -i 's/^CACHE_STORE=.*/CACHE_STORE=array/' .env || echo 'CACHE_STORE=array' >> .env
-          grep -q '^SESSION_DRIVER=' .env && sed -i 's/^SESSION_DRIVER=.*/SESSION_DRIVER=array/' .env || echo 'SESSION_DRIVER=array' >> .env
-          grep -q '^QUEUE_CONNECTION=' .env && sed -i 's/^QUEUE_CONNECTION=.*/QUEUE_CONNECTION=sync/' .env || echo 'QUEUE_CONNECTION=sync' >> .env
+          # IMPORTANT: ne pas forcer sqlite ici
+          # On s'appuie sur les variables d'environnement du pipeline
 
           php artisan key:generate --force || true
-          php artisan config:clear || true
+
+          # Très important : éviter un ancien cache de config qui figerait sqlite
+          php artisan config:clear
+          php artisan cache:clear
+
+          # Sanity check: doit afficher mysql
+          php -r 'echo "DB_CONNECTION env=".getenv("DB_CONNECTION").PHP_EOL;'
+          php artisan tinker --execute="dump(config('database.default'));"
+
+          php artisan migrate:fresh --seed --force
         '''
       }
     }
@@ -70,7 +104,6 @@ pipeline {
     success {
       echo '✅ Tests passed'
       script {
-        // optionnel : si plugin/credentials GitHub configurés
         try {
           githubNotify status: 'SUCCESS',
                        description: 'Tests passed',
