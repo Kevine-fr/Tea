@@ -2,8 +2,7 @@ pipeline {
   agent {
     dockerfile {
       filename 'Dockerfile.ci'
-      // uniquement rejoindre le réseau docker compose
-      args "--network tea-app_backend"
+      args "--network backend"
     }
   }
 
@@ -41,7 +40,6 @@ pipeline {
       steps {
         sh '''
           echo "== DNS =="
-          getent hosts mysql || true
           getent hosts mysql_tea || true
 
           echo "== ENV DB_ =="
@@ -110,10 +108,6 @@ pipeline {
 
           rm -f bootstrap/cache/*.php || true
 
-          echo "Sanity check"
-          php -r 'echo getenv("DB_CONNECTION").PHP_EOL;'
-          php -r 'echo getenv("DB_HOST").PHP_EOL;'
-
           php artisan migrate:fresh --seed --force
         '''
       }
@@ -130,28 +124,10 @@ pipeline {
 
     success {
       echo '✅ Tests passed'
-      script {
-        try {
-          githubNotify status: 'SUCCESS',
-                       description: 'Tests passed',
-                       context: 'ci/jenkins/tests'
-        } catch (e) {
-          echo "githubNotify skipped"
-        }
-      }
     }
 
     failure {
       echo '❌ Tests failed'
-      script {
-        try {
-          githubNotify status: 'FAILURE',
-                       description: 'Tests failed — merge blocked',
-                       context: 'ci/jenkins/tests'
-        } catch (e) {
-          echo "githubNotify skipped"
-        }
-      }
     }
 
     always {
