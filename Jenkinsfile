@@ -106,34 +106,13 @@ pipeline {
   post {
     success {
       echo '✅ Tests passed'
-      script {
-        // ne doit JAMAIS faire échouer le build si le plugin manque / bug
-        try {
-          githubNotify status: 'SUCCESS',
-                       description: 'Tests passed',
-                       context: 'ci/jenkins/tests'
-        } catch (e) {
-          echo "githubNotify skipped: ${e}"
-        }
-      }
     }
 
     failure {
       echo '❌ Tests failed'
-      script {
-        try {
-          githubNotify status: 'FAILURE',
-                       description: 'Tests failed',
-                       context: 'ci/jenkins/tests'
-        } catch (e) {
-          echo "githubNotify skipped: ${e}"
-        }
-      }
     }
 
     always {
-      // cleanWs peut échouer si pas de node context, ici on EST dans un agent docker donc OK
-      // mais on le protège quand même
       script {
         try {
           cleanWs()
