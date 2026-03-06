@@ -98,22 +98,26 @@ pipeline {
 
     stage('Run Tests') {
       steps {
-        sh 'php artisan test --stop-on-failure'
+        script {
+          int rc = sh(script: 'php artisan test --stop-on-failure', returnStatus: true)
+
+          if (rc == 0) {
+            echo '✅ Tests passed'
+          } else {
+            error("Tests failed with exit code ${rc}")
+          }
+        }
       }
     }
   }
 
   post {
-    success {
-      echo '✅ Tests passed'
-    }
-
     always {
       script {
         try {
           cleanWs()
         } catch (e) {
-          echo "cleanWs skipped: ${e}"
+          echo "cleanWs skipped"
         }
       }
     }
