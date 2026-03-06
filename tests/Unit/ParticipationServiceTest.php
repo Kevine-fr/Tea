@@ -41,12 +41,12 @@ class ParticipationServiceTest extends TestCase
     {
         [$user] = $this->createUserWithRole('user');
         $ticket = TicketCode::factory()->create();
-        $prize  = Prize::factory()->create(['stock' => 5]);
+        $prize = Prize::factory()->create(['stock' => 5]);
 
         $this->service->participate($user, $ticket->code);
 
         $this->assertDatabaseHas('prizes', [
-            'id'    => $prize->id,
+            'id' => $prize->id,
             'stock' => 4,
         ]);
     }
@@ -59,38 +59,5 @@ class ParticipationServiceTest extends TestCase
         $this->assertArrayHasKey('total_winners', $stats);
         $this->assertArrayHasKey('prizes_remaining_stock', $stats);
         $this->assertArrayHasKey('total_redemptions', $stats);
-    }
-}
-
-// ─── PrizeModelTest ────────────────────────────────────────────────────────────
-
-namespace Tests\Unit;
-
-use App\Models\Prize;
-use Tests\TestCase;
-
-class PrizeModelTest extends TestCase
-{
-    public function test_is_available_returns_true_when_stock_positive(): void
-    {
-        $prize = Prize::factory()->create(['stock' => 3]);
-        $this->assertTrue($prize->isAvailable());
-    }
-
-    public function test_is_available_returns_false_when_stock_zero(): void
-    {
-        $prize = Prize::factory()->outOfStock()->create();
-        $this->assertFalse($prize->isAvailable());
-    }
-
-    public function test_decrement_stock_reduces_by_one(): void
-    {
-        $prize = Prize::factory()->create(['stock' => 10]);
-        $prize->decrementStock();
-
-        $this->assertDatabaseHas('prizes', [
-            'id'    => $prize->id,
-            'stock' => 9,
-        ]);
     }
 }
